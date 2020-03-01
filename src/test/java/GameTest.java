@@ -24,4 +24,11 @@ public class GameTest {
     public void setUp() throws Exception {
         this.game = new Game();
     }
+
+    @Test
+    public void cloneAndRandomise() {
+        System.out.println(game.toString());
+        Game randomGame = game.cloneAndRandomise(PlayerType.CREATURE);
+        System.out.println(randomGame.toString());
+    }
 }

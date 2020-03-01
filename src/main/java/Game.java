@@ -44,11 +44,11 @@ public class Game {
 
     public Game() {
         // Make a default new game
-        this.scientist = new Player(this.DEFAULT_SCIENTIST);
-        this.creature = new Player(this.DEFAULT_CREATURE);
-        this.tiles = this.makeDeck(this.DEFAULT_DECK_SIZE, Board.DEFAULT_MAX_WIDTH, this.DEFAULT_TOKEN_TILES);
-        List<Cube> leftCube = this.DEFAULT_LEFTCUBES.stream().map(Cube::new).collect(Collectors.toList());
-        List<Cube> rightCube = this.DEFUALT_RIGHTCUBES.stream().map(Cube::new).collect(Collectors.toList());
+        this.scientist = new Player(Game.DEFAULT_SCIENTIST);
+        this.creature = new Player(Game.DEFAULT_CREATURE);
+        this.tiles = this.makeDeck(Game.DEFAULT_DECK_SIZE, Board.DEFAULT_MAX_WIDTH, Game.DEFAULT_TOKEN_TILES);
+        List<Cube> leftCube = Game.DEFAULT_LEFTCUBES.stream().map(Cube::new).collect(Collectors.toList());
+        List<Cube> rightCube = Game.DEFUALT_RIGHTCUBES.stream().map(Cube::new).collect(Collectors.toList());
         this.board = new Board(tiles, leftCube, rightCube);
         this.activePlayer = this.creature;
         this.state = GameState.MOVE_CUBES;
@@ -60,7 +60,7 @@ public class Game {
         this.scientist = new Player(game.scientist);
         this.creature = new Player(game.creature);
         this.board = new Board(game.board);
-        this.tiles = new Deck(game.tiles);
+        this.tiles = new Deck<>(game.tiles);
         this.activePlayer = game.activePlayer == game.scientist ? this.scientist : this.creature;
         this.state = game.state;
         this.droppedCubes = game.droppedCubes.stream().map(Cube::new).collect(Collectors.toList());
@@ -88,6 +88,9 @@ public class Game {
     }
 
     public void setScientist(Player scientist) {
+        if(this.scientist == this.getActivePlayer()) {
+            this.setActivePlayer(scientist);
+        }
         this.scientist = scientist;
     }
 
@@ -96,6 +99,9 @@ public class Game {
     }
 
     public void setCreature(Player creature) {
+        if(this.creature == this.getActivePlayer()) {
+            this.activePlayer = this.creature;
+        }
         this.creature = creature;
     }
 
@@ -141,6 +147,26 @@ public class Game {
         return this.firstPlayer;
     }
 
+    public Game cloneAndRandomise(PlayerType player) {
+        // Randomise players
+        Game clone = new Game(this);
+        clone.setScientist(clone.getScientist().cloneAndRandomise(player == PlayerType.CREATURE));
+        clone.setCreature(clone.getCreature().cloneAndRandomise(player == PlayerType.SCIENTIST));
+        // Randomise the deck of tiles
+        // Token tiles have to be in the bottom 10
+        Deck<Tile> tiles = clone.getTiles();
+        int nonTokenCount = tiles.getItems().size() - 10;
+        List<Tile> nonTokenTiles = IntStream.range(0, nonTokenCount).mapToObj(i -> tiles.getItems().get(i))
+                .collect(Collectors.toList());
+        List<Tile> tokenTiles = IntStream.range(nonTokenCount, tiles.getItems().size())
+                .mapToObj(i -> tiles.getItems().get(i))
+                .collect(Collectors.toList());
+        Collections.shuffle(tokenTiles);
+        tiles.setItems(nonTokenTiles);
+        tiles.getItems().addAll(tokenTiles);
+        return clone;
+    }
+
     private Deck<Tile> makeDeck(int deckSize, int boardWidth, int tokenTiles) {
         // Construct a deck of n tiles, t of which have tokens.
         // Place the token tiles in the the bottom  n - b, where b is board width
@@ -184,7 +210,7 @@ public class Game {
         }
         // Play wildcard
         if(this.getActivePlayer().isWildcardReady()) {
-            for (Card card : this.WILDCARDS) {
+            for (Card card : Game.WILDCARDS) {
                 // For each distinct card in this players hand, make all possible future states if that card is played
                 for (Board board : card.getPossibleMoves(this.board)) {
                     Game cardPlay = new Game(this);
@@ -205,7 +231,7 @@ public class Game {
         // Determine the numbers the creature could say
         Set<Integer> numbers = IntStream.range(0, this.getBoard().getInactiveRowTiles().size())
                 .map(i -> this.getBoard().getNumberAdjacent(false, i))
-                .mapToObj(Integer::new)
+                .boxed()
                 .collect(Collectors.toSet());
         for(Integer num : numbers) {
             Game copy = new Game(this);
@@ -245,7 +271,7 @@ public class Game {
             Game dropLeft = new Game(this);
             if(!dropLeft.getBoard().getInactiveRowTiles().get(0).isCreaturePresent()) {
                 List<Tile> tokenTiles = dropLeft.getBoard().getSideTiles(Board.Side.LEFT).stream()
-                        .filter(t -> t.isTokenPresent()).collect(Collectors.toList());
+                        .filter(Tile::isTokenPresent).collect(Collectors.toList());
                 tokenTiles.forEach(t -> {
                     t.setTokenPresent(false);
                     dropLeft.getScientist().addToken();
@@ -258,7 +284,7 @@ public class Game {
             if(!dropRight.getBoard().getInactiveRowTiles().get(dropRight.getBoard().getInactiveRowTiles().size()-1)
                     .isCreaturePresent()) {
                 List<Tile> tokenTiles = dropRight.getBoard().getSideTiles(Board.Side.RIGHT).stream()
-                        .filter(t -> t.isTokenPresent()).collect(Collectors.toList());
+                        .filter(Tile::isTokenPresent).collect(Collectors.toList());
                 tokenTiles.forEach(t -> {
                     t.setTokenPresent(false);
                     dropRight.getScientist().addToken();

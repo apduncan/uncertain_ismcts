@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,7 +25,7 @@ public class Player {
         this.tokens = tokens;
         this.wildcardReady = wildcardReady;
         // Set up deck and draw starting cards
-        this.deck = new Deck<Card>();
+        this.deck = new Deck<>();
         this.deck.addToDeck(IntStream.range(0, cardMoveAll).mapToObj(i -> new MoveAllCard()).collect(Collectors.toList()));
         this.deck.addToDeck(IntStream.range(0, cardMoveOne).mapToObj(i -> new MoveOneCard()).collect(Collectors.toList()));
         this.deck.addToDeck(IntStream.range(0, cardSplit).mapToObj(i -> new SplitCard()).collect(Collectors.toList()));
@@ -116,6 +117,31 @@ public class Player {
         return new ArrayList(
                 this.hand.getItems().stream().collect(Collectors.toMap(Card::toString, p -> p, (p, q) -> p)).values()
         );
+    }
+
+    public Player cloneAndRandomise(boolean incldueHand) {
+        // Pool all the card which are not visible to the player being considered
+        // includeHand indicates whether to shuffle hand and deck together
+        int handSize = this.getHand().size();
+        int deckSize = this.getDeck().size();
+        // Copy cards into a list to be redealt
+        List<Card> cards = this.getDeck().getItems().stream().map(Card::makeCopy).collect(Collectors.toList());
+        if(incldueHand) {
+            cards.addAll(this.getHand().getItems().stream().map(Card::makeCopy).collect(Collectors.toList()));
+        }
+        Player clone = new Player(this);
+        // Shuffle the pooled unseen cards
+        Collections.shuffle(cards);
+        // Make a new list of card for the deck
+        List<Card> newDeck = IntStream.range(0, deckSize).mapToObj(cards::get).collect(Collectors.toList());
+        clone.getDeck().setItems(newDeck);
+        if(incldueHand) {
+            // Make a list of new cards for the hand
+            List<Card> newHand = IntStream.range(deckSize, deckSize + handSize).mapToObj(cards::get)
+                    .collect(Collectors.toList());
+            clone.getHand().setItems(newHand);
+        }
+        return clone;
     }
 
     @Override
