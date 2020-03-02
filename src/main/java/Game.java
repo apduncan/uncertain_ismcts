@@ -27,6 +27,7 @@ public class Game {
     private GameState state;
     private List<Cube> droppedCubes;
     private Player firstPlayer;
+    private String lastMove;
 
     public Game(PlayerType scientist, PlayerType creature, int boardWidth, int deckSize, int tokenTiles,
                 List<Color> leftCubes, List<Color> rightCubes) {
@@ -40,6 +41,7 @@ public class Game {
         this.state = GameState.MOVE_CUBES;
         this.droppedCubes = new ArrayList<>();
         this.firstPlayer = this.creature;
+        this.lastMove = "";
     }
 
     public Game() {
@@ -54,6 +56,7 @@ public class Game {
         this.state = GameState.MOVE_CUBES;
         this.droppedCubes = new ArrayList<>();
         this.firstPlayer = this.creature;
+        this.lastMove = "";
     }
 
     public Game(Game game) {
@@ -64,7 +67,8 @@ public class Game {
         this.activePlayer = game.activePlayer == game.scientist ? this.scientist : this.creature;
         this.state = game.state;
         this.droppedCubes = game.droppedCubes.stream().map(Cube::new).collect(Collectors.toList());
-        this.firstPlayer = this.getFirstPlayer() == this.getCreature() ? game.getCreature() : game.getScientist();
+        this.firstPlayer = game.getFirstPlayer() == game.getCreature() ? this.getCreature() : this.getScientist();
+        this.lastMove = game.getLastMove();
     }
 
     public List<Cube> getDroppedCubes() {
@@ -129,12 +133,28 @@ public class Game {
         this.activePlayer = activePlayer;
     }
 
+    public void setActivePlayer(PlayerType player) {
+        this.activePlayer = player == PlayerType.SCIENTIST ? this.getScientist() : this.getCreature();
+    }
+
+    public PlayerType getActivePlayerType() {
+        return this.activePlayer == this.scientist ? PlayerType.SCIENTIST : PlayerType.CREATURE;
+    }
+
     public GameState getState() {
         return state;
     }
 
     public void setState(GameState state) {
         this.state = state;
+    }
+
+    public String getLastMove() {
+        return lastMove;
+    }
+
+    public void setLastMove(String lastMove) {
+        this.lastMove = lastMove;
     }
 
     public Player toggleActivePlayer() {
@@ -150,15 +170,24 @@ public class Game {
     public Game cloneAndRandomise(PlayerType player) {
         // Randomise players
         Game clone = new Game(this);
-        clone.setScientist(clone.getScientist().cloneAndRandomise(player == PlayerType.CREATURE));
-        clone.setCreature(clone.getCreature().cloneAndRandomise(player == PlayerType.SCIENTIST));
+        Player scientist = clone.getScientist().cloneAndRandomise(player == PlayerType.CREATURE);
+        Player creature = clone.getCreature().cloneAndRandomise(player == PlayerType.SCIENTIST);
+        Player firstPlayer = this.getFirstPlayer() == this.getScientist() ? scientist : creature;
+        if(clone.getActivePlayerType() == PlayerType.SCIENTIST) {
+            clone.setActivePlayer(scientist);
+        } else {
+            clone.setActivePlayer(creature);
+        }
+        clone.setScientist(scientist);
+        clone.setCreature(creature);
+        clone.setFirstPlayer(firstPlayer);
         // Randomise the deck of tiles
         // Token tiles have to be in the bottom 10
         Deck<Tile> tiles = clone.getTiles();
         int nonTokenCount = tiles.getItems().size() - 10;
         List<Tile> nonTokenTiles = IntStream.range(0, nonTokenCount).mapToObj(i -> tiles.getItems().get(i))
                 .collect(Collectors.toList());
-        List<Tile> tokenTiles = IntStream.range(nonTokenCount, tiles.getItems().size())
+        List<Tile> tokenTiles = IntStream.range(Math.max(nonTokenCount, 0), tiles.getItems().size())
                 .mapToObj(i -> tiles.getItems().get(i))
                 .collect(Collectors.toList());
         Collections.shuffle(tokenTiles);
@@ -194,6 +223,8 @@ public class Game {
             Game draw = new Game(this);
             draw.activePlayer.drawCards(1);
             draw.toggleActivePlayer();
+            draw.setLastMove((this.activePlayer == this.creature ?
+                    PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) + "|DRAW");
             games.add(draw);
         }
         // Play each distinct card
@@ -205,6 +236,10 @@ public class Game {
                 cardPlay.activePlayer.getHand().getItems().remove(card);
                 cardPlay.activePlayer.getDeck().getDiscard().add(card);
                 cardPlay.toggleActivePlayer();
+                // Make a string so we can uniquely identify the move just made (card played + board state moved into)
+                String moveDesc = (this.activePlayer == this.creature ? PlayerType.CREATURE.name() :
+                        PlayerType.SCIENTIST.name()) + "|" + card.getClass().getName() + "|" + board.hashCode();
+                cardPlay.setLastMove(moveDesc);
                 games.add(cardPlay);
             }
         }
@@ -217,6 +252,9 @@ public class Game {
                     cardPlay.getActivePlayer().setWildcardReady(false);
                     cardPlay.setBoard(board);
                     cardPlay.toggleActivePlayer();
+                    // Make a string so we can uniquely identify the move just made (card played + board state moved into)
+                    String moveDesc = (this.activePlayer == this.creature ? PlayerType.CREATURE.name() :
+                            PlayerType.SCIENTIST.name()) + "|WILDCARD|" + board.hashCode();
                     games.add(cardPlay);
                 }
             }
@@ -237,6 +275,7 @@ public class Game {
             Game copy = new Game(this);
             // Move to number, modifies in place
             copy.getBoard().moveToNumber(num);
+            copy.setLastMove("CREATUREUPDATE|" + board.hashCode());
             games.add(copy);
         }
 
@@ -248,6 +287,7 @@ public class Game {
         for(Set<Color> c : colors) {
             Game copy = new Game(this);
             copy.getBoard().moveToColor(c);
+            copy.setLastMove("CREATUREUPDATE|" + board.hashCode());
             games.add(copy);
         }
 
@@ -255,11 +295,22 @@ public class Game {
         Set<Game> nonLoss = games.stream().filter(g -> {
             return g.getBoard().getInactiveRowTiles().stream().filter(Tile::isCreaturePresent).mapToInt(t -> 1).sum() > 1;
         }).collect(Collectors.toSet());
+        // Select games where the creature wins
+        Set<Game> win = games.stream().filter(g -> {
+            return g.getBoard().getInactiveRowTiles().get(0).isCreaturePresent() &&
+                    g.getBoard().getInactiveRowTiles().get(g.getBoard().getInactiveRowTiles().size()-1).isCreaturePresent() &&
+                    g.getBoard().size() == g.getBoard().getMaxWidth();
+        }).collect(Collectors.toSet());
+        // If winning moves exist, only take the winning moves
+        if(win.size() > 0) {
+            return win;
+        }
+        // If it is possible, opt to not lose if we can't win
         if(nonLoss.size() > 0) {
             return nonLoss;
-        } else {
-            return games;
         }
+        // Otherwise I guess we should just lose :(
+        return games;
     }
 
     public Set<Game> getScientistDrop() {
@@ -277,7 +328,8 @@ public class Game {
                     dropLeft.getScientist().addToken();
                 });
                 // If edge has token, add token to scientist
-                this.droppedCubes = dropLeft.getBoard().dropEdge(Board.Side.LEFT);
+                dropLeft.droppedCubes = dropLeft.getBoard().dropEdge(Board.Side.LEFT);
+                dropLeft.setLastMove("SCIENTISTDROP|LEFT|" + board.hashCode());
                 games.add(dropLeft);
             }
             Game dropRight = new Game(this);
@@ -289,13 +341,16 @@ public class Game {
                     t.setTokenPresent(false);
                     dropRight.getScientist().addToken();
                 });
-                this.droppedCubes = dropRight.getBoard().dropEdge(Board.Side.RIGHT);
+                dropRight.droppedCubes = dropRight.getBoard().dropEdge(Board.Side.RIGHT);
                 games.add(dropRight);
+                dropRight.setLastMove("SCIENTISTDROP|RIGHT|" + board.hashCode());
             }
             if(games.size() == 0) {
                 // If it isn't possible to drop and edge, return current gamestate.
                 // Will lead to creature win during state change
-                games.add(new Game(this));
+                Game copy = new Game(this);
+                copy.setLastMove("SCIENTISTDROP|NONE");
+                games.add(copy);
             }
         } else {
             games.add(new Game(this));
@@ -307,12 +362,17 @@ public class Game {
         // Return all the states in which the dropped cubes could be placed.
         // If no dropped cubes, just return current state
         Set<Game> games = new HashSet<>();
+        if(this.getDroppedCubes().size() == 0) {
+            games.add(new Game(this));
+            return games;
+        }
         for(Board board : this.placeCubes(new HashSet<>(Arrays.asList(new Board(this.getBoard()))),
-                this.droppedCubes.stream().map(Cube::new).collect(Collectors.toList()),
+                this.getDroppedCubes().stream().map(Cube::new).collect(Collectors.toList()),
                 this.getBoard())) {
             Game copy = new Game(this);
             copy.setBoard(board);
-            this.droppedCubes = new ArrayList<>();
+            copy.setDroppedCubes(new ArrayList<>());
+            copy.setLastMove("CREATURE|FREEPLACE|" + board.hashCode());
             games.add(copy);
         }
         return games;
@@ -320,13 +380,19 @@ public class Game {
 
     public Set<Game> getDrawTiles() {
         // Draw the top two tiles, place them either left or right
-        List<Tile> tiles = this.getTiles().draw(2);
+        List<Tile> tiles;
         Set<Game> games = new HashSet<>();
         Game lr = new Game(this);
+        tiles = lr.getTiles().draw(2);
         lr.getBoard().addTiles(new Tile(tiles.get(0)), new Tile(tiles.get(1)));
+        lr.setLastMove((lr.getFirstPlayer() == lr.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
+                "|PLACETILES|" + board.hashCode());
         lr.toggleFirstPlayer();
         Game rl = new Game(this);
+        tiles = rl.getTiles().draw(2);
         rl.getBoard().addTiles(new Tile(tiles.get(1)), new Tile(tiles.get(0)));
+        rl.setLastMove((rl.getFirstPlayer() == rl.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
+                "|PLACETILES|" + board.hashCode());
         rl.toggleFirstPlayer();
         games.addAll(Arrays.asList(lr, rl));
         return games;
@@ -338,9 +404,10 @@ public class Game {
         Set<Game> games = new HashSet<>();
         for(Integer idx: tokenIdx) {
             Game copy = new Game(this);
-            Tile tile = this.getBoard().getInactiveRowTiles().get(idx);
+            Tile tile = copy.getBoard().getInactiveRowTiles().get(idx);
             tile.setTokenPresent(false);
-            this.getCreature().addToken();
+            copy.getCreature().addToken();
+            copy.setLastMove("CREATURE|TAKETOKEN|" + idx.toString());
             games.add(copy);
         }
         if(games.size() == 0) {
@@ -420,4 +487,5 @@ public class Game {
                 "\n+activePlayer\n" + (this.activePlayer == this.scientist ? "SCIENTIST" : "CREATURE") +
                 "\n+state=" + state;
     }
+
 }

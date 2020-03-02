@@ -22,6 +22,11 @@ public enum GameState {
         public Set<Game> possibleGames(Game currentGame) {
             return currentGame.getActivePlayerMoves();
         }
+
+        @Override
+        public PlayerType playerToMove(Game game) {
+            return game.getActivePlayerType();
+        }
     },
     CREATURE_UPDATE {
         @Override
@@ -47,6 +52,11 @@ public enum GameState {
         public Set<Game> possibleGames(Game currentGame) {
             return currentGame.getCreatureUpdates();
         }
+
+        @Override
+        public PlayerType playerToMove(Game game) {
+            return PlayerType.CREATURE;
+        }
     },
     SCIENTIST_WIN {
         @Override
@@ -60,6 +70,11 @@ public enum GameState {
             // Terminal state - return only current gamestate
             return new HashSet<>(Arrays.asList(currentGame));
         }
+
+        @Override
+        public PlayerType playerToMove(Game game) {
+            return null;
+        }
     },
     CREATURE_WIN {
         @Override
@@ -70,6 +85,11 @@ public enum GameState {
         @Override
         public Set<Game> possibleGames(Game currentGame) {
             return new HashSet<>(Arrays.asList(currentGame));
+        }
+
+        @Override
+        public PlayerType playerToMove(Game game) {
+            return null;
         }
     },
     SCIENTIST_DROP {
@@ -93,6 +113,11 @@ public enum GameState {
         public Set<Game> possibleGames(Game currentGame) {
             return currentGame.getScientistDrop();
         }
+
+        @Override
+        public PlayerType playerToMove(Game game) {
+            return PlayerType.SCIENTIST;
+        }
     },
     FREE_PLACE {
         @Override
@@ -104,6 +129,11 @@ public enum GameState {
         public Set<Game> possibleGames(Game currentGame) {
             return currentGame.getFreePlace();
         }
+
+        @Override
+        public PlayerType playerToMove(Game game) {
+            return PlayerType.CREATURE;
+        }
     },
     DRAW_TILES {
         @Override
@@ -114,6 +144,11 @@ public enum GameState {
         @Override
         public Set<Game> possibleGames(Game currentGame) {
             return currentGame.getDrawTiles();
+        }
+
+        @Override
+        public PlayerType playerToMove(Game game) {
+            return game.getFirstPlayer() == game.getCreature() ? PlayerType.CREATURE : PlayerType.SCIENTIST;
         }
     },
     CREATURE_TOKENS {
@@ -134,6 +169,11 @@ public enum GameState {
         public Set<Game> possibleGames(Game currentGame) {
             return currentGame.getCreatureToken();
         }
+
+        @Override
+        public PlayerType playerToMove(Game game) {
+            return PlayerType.CREATURE;
+        }
     },
     TIEBREAKER {
         @Override
@@ -149,10 +189,16 @@ public enum GameState {
         public Set<Game> possibleGames(Game currentGame) {
             return currentGame.getTiebreaker();
         }
+
+        @Override
+        public PlayerType playerToMove(Game game) {
+            return null;
+        }
     };
 
     public abstract GameState nextState(Game prevGame, Game currentGame);
     public abstract Set<Game> possibleGames(Game currentGame);
+    public abstract PlayerType playerToMove(Game game);
 
     public static void main(String[] args) {
         Game game = new Game();
