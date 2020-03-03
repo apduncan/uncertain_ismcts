@@ -1,3 +1,6 @@
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -152,5 +155,33 @@ public class Player {
                 "\thand=" + hand +
                 "\ttokens=" + tokens +
                 "\twildcardReady=" + wildcardReady;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Player player = (Player) o;
+
+        return new EqualsBuilder()
+                .append(handLimit, player.handLimit)
+                .append(tokens, player.tokens)
+                .append(wildcardReady, player.wildcardReady)
+                .append(deck, player.deck)
+                .append(hand, player.hand)
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder(17, 37)
+                .append(handLimit)
+                .append(deck)
+                .append(hand)
+                .append(tokens)
+                .append(wildcardReady)
+                .toHashCode();
     }
 }

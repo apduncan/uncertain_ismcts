@@ -1,3 +1,6 @@
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -87,5 +90,27 @@ public class Deck<T> {
                 "items=" + this.items.stream().map(Object::toString).collect(Collectors.joining("")) +  ", " +
                 "discard=" + this.discard.stream().map(Object::toString).collect(Collectors.joining("")) +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Deck<?> deck = (Deck<?>) o;
+
+        return new EqualsBuilder()
+                .append(items, deck.items)
+                .append(discard, deck.discard)
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder(17, 37)
+                .append(items)
+                .append(discard)
+                .toHashCode();
     }
 }

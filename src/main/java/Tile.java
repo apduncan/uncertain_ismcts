@@ -62,12 +62,26 @@ public class Tile {
         this.creaturePresent = creaturePresent;
     }
 
-    @Override
-    public int hashCode() {
+    public int equiHash() {
         return new HashCodeBuilder(17, 37)
                 .append(token)
                 .append(tokenPresent)
                 .append(creaturePresent)
                 .toHashCode();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Tile tile = (Tile) o;
+
+        return new EqualsBuilder()
+                .append(token, tile.token)
+                .append(tokenPresent, tile.tokenPresent)
+                .append(creaturePresent, tile.creaturePresent)
+                .isEquals();
     }
 }

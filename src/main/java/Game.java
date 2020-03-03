@@ -456,24 +456,24 @@ public class Game {
         Game game = (Game) o;
 
         return new EqualsBuilder()
-                .append(scientist.toString(), game.scientist.toString())
-                .append(creature.toString(), game.creature.toString())
-                .append(board.toString(), game.board.toString())
-                .append(tiles.toString(), game.tiles.toString())
-                .append(activePlayer.toString(), game.activePlayer.toString())
-                .append(state.toString(), game.state.toString())
+                .append(scientist, game.scientist)
+                .append(creature, game.creature)
+                .append(board, game.board)
+                .append(tiles, game.tiles)
+                .append(activePlayer, game.activePlayer)
+                .append(state, game.state)
                 .isEquals();
     }
 
     @Override
     public int hashCode() {
         return new HashCodeBuilder(17, 37)
-                .append(scientist.toString())
-                .append(creature.toString())
-                .append(board.toString())
-                .append(tiles.toString())
-                .append(activePlayer.toString())
-                .append(state.toString())
+                .append(scientist)
+                .append(creature)
+                .append(board)
+                .append(tiles)
+                .append(activePlayer)
+                .append(state)
                 .toHashCode();
     }
 

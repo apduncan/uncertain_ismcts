@@ -27,6 +27,7 @@ public class BoardTest {
 
     @After
     public void tearDown() throws Exception {
+
     }
 
     @Test
@@ -36,5 +37,20 @@ public class BoardTest {
         System.out.println(this.board);
         Board b2 = new Board(board);
         System.out.println(b2);
+    }
+
+    @Test
+    public void testHash() {
+        Board clone = new Board(this.board);
+        assertEquals(this.board.hashCode(),clone.hashCode());
+        // Change something and check it is not equal
+        clone.dropEdge(Board.Side.LEFT);
+        assertNotEquals(this.board.hashCode(), clone.hashCode());
+        clone = new Board(this.board);
+        // Move a cube
+        Cube green = new Cube(Color.GREEN);
+        clone.getActiveRowSpaces().get(0).addCube(green);
+        System.out.println(clone);
+        assertNotEquals(this.board.hashCode(), clone.hashCode());
     }
 }

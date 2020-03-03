@@ -1,4 +1,5 @@
 import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,5 +32,12 @@ public abstract class Card {
         return new EqualsBuilder()
                 .append(this.toString(), card.toString())
                 .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder(17, 37)
+                .append(this.toString())
+                .toHashCode();
     }
 }

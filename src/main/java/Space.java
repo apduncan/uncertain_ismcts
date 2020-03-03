@@ -8,6 +8,9 @@ public class Space {
     private List<Cube> cubes;
     private Set<Color> colors;
 
+    private static HashMap<List<Cube>, List<Cube>> sortMap = new HashMap<>();
+    private static HashMap<List<Cube>, Set<Color>> colorMap = new HashMap<>();
+
     public Space() {
         this.cubes = new ArrayList<>();
         this.colors = new HashSet<>();
@@ -16,7 +19,9 @@ public class Space {
     public Space(Space space) {
         // Copy constructor, does not copy adjacent tiles or spaces
         this();
-        this.addCubes(space.cubes.stream().map((cube) -> new Cube(cube)).collect(Collectors.toList()));
+        // If cloning a space, trust the cubes are in order
+        this.cubes = new ArrayList<>(space.cubes);
+        this.colors = new HashSet<>(space.colors);
     }
 
     public Space(List<Cube> cubes) {
@@ -51,10 +56,19 @@ public class Space {
     }
 
     private void sortCubes() {
-        this.cubes = this.cubes.stream().sorted(Cube::compareTo).collect(Collectors.toList());
-        this.colors = this.getCubes().stream()
-                .map(Cube::getColor)
-                .collect(Collectors.toSet());
+        if(sortMap.containsKey(this.cubes)) {
+            this.colors = new HashSet<>(colorMap.get(cubes));
+            this.cubes = new ArrayList<>(sortMap.get(cubes));
+        } else {
+            List<Cube> sorted = this.cubes.stream().sorted(Cube::compareTo).collect(Collectors.toList());
+            Set<Color> colors = this.getCubes().stream()
+                    .map(Cube::getColor)
+                    .collect(Collectors.toSet());
+            sortMap.put(this.cubes, sorted);
+            colorMap.put(this.cubes, colors);
+            this.cubes = sorted;
+            this.colors = colors;
+        }
     }
 
     public void clearCubes() {

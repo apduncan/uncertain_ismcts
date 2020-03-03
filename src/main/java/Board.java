@@ -205,11 +205,15 @@ public class Board {
     }
 
     public List<Cube> dropEdge(Board.Side side) {
-        List<Space> spaces = null;
-        List<Tile> tiles = null;
+        List<Space> spaces = new ArrayList<>();
+        List<Tile> tiles = new ArrayList<>();
         if(side == Side.LEFT) {
             spaces = Arrays.asList(this.topRowSpaces.get(0), this.bottomRowSpaces.get(0));
             tiles = Arrays.asList(this.topRowTiles.get(0), this.bottomRowTiles.get(0));
+            this.topRowSpaces.remove(0);
+            this.topRowTiles.remove(0);
+            this.bottomRowTiles.remove(0);
+            this.bottomRowSpaces.remove(0);
         } else {
             spaces = Stream.of(this.topRowSpaces, this.bottomRowSpaces)
                     .map(r -> r.get(r.size()-1))
@@ -217,11 +221,11 @@ public class Board {
             tiles = Stream.of(this.topRowTiles, this.bottomRowTiles)
                     .map(r -> r.get(r.size()-1))
                     .collect(Collectors.toList());
+            this.topRowSpaces.remove(this.topRowSpaces.size()-1);
+            this.topRowTiles.remove(this.topRowTiles.size()-1);
+            this.bottomRowSpaces.remove(this.bottomRowSpaces.size()-1);
+            this.bottomRowTiles.remove(this.bottomRowTiles.size()-1);
         }
-        this.topRowSpaces.removeAll(spaces);
-        this.bottomRowSpaces.removeAll(spaces);
-        this.topRowTiles.removeAll(tiles);
-        this.bottomRowTiles.removeAll(tiles);
         return spaces.stream()
                 .flatMap(s -> s.getCubes().stream())
                 .collect(Collectors.toList());
@@ -357,14 +361,24 @@ public class Board {
         Board board = (Board) o;
 
         return new EqualsBuilder()
-                .append(this.toString(), board.toString())
+                .append(this.topRowSpaces, board.topRowSpaces)
+                .append(this.topRowTiles, board.topRowTiles)
+                .append(this.bottomRowSpaces, board.bottomRowSpaces)
+                .append(this.bottomRowTiles, board.bottomRowTiles)
+                .append(this.activeRowTiles == this.topRowTiles, board.activeRowTiles == board.topRowTiles)
+                .append(this.maxWidth, board.maxWidth)
                 .isEquals();
     }
 
     @Override
     public int hashCode() {
         return new HashCodeBuilder(17, 37)
-                .append(this.toString())
+                .append(this.topRowSpaces)
+                .append(this.topRowTiles)
+                .append(this.bottomRowSpaces)
+                .append(this.bottomRowTiles)
+                .append(this.activeRowTiles == this.topRowTiles)
+                .append(this.maxWidth)
                 .toHashCode();
     }
 }
