@@ -7,6 +7,9 @@ public class TreeNode {
     /***
      * Node in ISMCTS game tree.
      */
+    /***
+     * TODO: Maybe consider a transposition handling scheme?
+     */
     private String move;
     private TreeNode parent;
     private List<TreeNode> children;

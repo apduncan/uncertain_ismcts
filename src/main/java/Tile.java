@@ -62,7 +62,8 @@ public class Tile {
         this.creaturePresent = creaturePresent;
     }
 
-    public int equiHash() {
+    @Override
+    public int hashCode() {
         return new HashCodeBuilder(17, 37)
                 .append(token)
                 .append(tokenPresent)

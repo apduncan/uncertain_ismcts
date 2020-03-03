@@ -92,31 +92,6 @@ public class Board {
         return activeRow ? this.getActiveRowSpaces() : this.getInactiveRowSpaces();
     }
 
-    public boolean isTileInActiveRow(Tile tile) {
-        return this.activeRowTiles.contains(tile);
-    }
-
-    public boolean isTileInInactiveRow(Tile tile) {
-        return !this.isTileInActiveRow(tile);
-    }
-
-    public boolean isSpaceInActiveRow(Space space) {
-        return this.activeRowSpaces.contains(space);
-    }
-
-    public boolean isSpaceInInactiveRow(Space space) {
-        return !this.isSpaceInActiveRow(space);
-    }
-
-    public List<Tile> getRow(Tile tile) {
-        // Get the row which contains this tile
-        return this.isTileInActiveRow(tile) ? this.getActiveRowTiles() : this.getInactiveRowTiles();
-    }
-
-    public List<Space> getRow(Space space) {
-        return this.isSpaceInActiveRow(space) ? this.getActiveRowSpaces() : this.getInactiveRowSpaces();
-    }
-
     public Tile getTile(boolean activeRow, int tile) throws IndexOutOfBoundsException {
         List<Tile> row = this.getRowTiles(activeRow);
         if(tile < 0 || tile > row.size()-1) {
@@ -133,30 +108,16 @@ public class Board {
         return row.get(space);
     }
 
-    public List<Space> getSpacesAdjacent(Tile tile) {
-        boolean activeRow = this.isTileInActiveRow(tile);
-        int idx = (activeRow ? this.getActiveRowTiles() : this.getInactiveRowTiles()).indexOf(tile);
-        return this.getSpacesAdjacent(activeRow, idx);
-    }
-
-    public List<Space> getSpacesAdjacent(boolean activeRow, int tile) {
-        return Arrays.asList(this.getRowSpaces(activeRow).get(tile), this.getRowSpaces(activeRow).get(tile+1));
-    }
-
-    public Set<Color> getColorAdjacent(Tile tile) {
-        return this.colorUnion(this.getSpacesAdjacent(tile));
+    public List<Space> getSpacesAdjacent(boolean activeRow, int tileIdx) {
+        return Arrays.asList(this.getSpace(activeRow, tileIdx), this.getSpace(activeRow, tileIdx+1));
     }
 
     public Set<Color> getColorAdjacent(boolean activeRow, int tile) {
-        return this.getColorAdjacent(this.getTile(activeRow, tile));
+        return this.colorUnion(this.getSpacesAdjacent(activeRow, tile));
     }
 
-    public int getNumberAdjacent(Tile tile) {
-        return this.getSpacesAdjacent(tile).stream().mapToInt(Space::getCubeCount).sum();
-    }
-
-    public int getNumberAdjacent(boolean activeRow, int tile) {
-        return this.getNumberAdjacent(this.getTile(activeRow, tile));
+    public int getNumberAdjacent(boolean activeRow, int tileIdx) {
+        return this.getSpacesAdjacent(activeRow, tileIdx).stream().mapToInt(Space::getCubeCount).sum();
     }
 
     public List<Tile> getTopRowTiles() {
@@ -296,22 +257,30 @@ public class Board {
                 }).mapToObj(Integer::new).collect(Collectors.toList());
     }
 
-    private String tileString(Tile tile) {
-        return this.getColorAdjacent(tile).stream()
+    private String tileString(boolean activeRow, int tileIdx) {
+        Tile tile = (activeRow ? this.getActiveRowTiles() : this.getInactiveRowTiles()).get(tileIdx);
+        return this.getColorAdjacent(activeRow, tileIdx).stream()
                         .map(c -> String.valueOf(c.toString().charAt(0)))
                         .sorted(Comparator.comparing(c -> c.toString()))
                         .collect(Collectors.joining()) +
                 "," +
-                this.getNumberAdjacent(tile) +
+                this.getNumberAdjacent(activeRow, tileIdx) +
                 (tile.isToken() ? (tile.isTokenPresent() ? " ★" : " ☆") : "") +
                 (tile.isCreaturePresent() ? " ☻" : "");
     }
 
-    private List<String> rowToStrings(List<Tile> tiles, List<Space> spaces) {
+    private List<String> rowToStrings(boolean topRow) {
+        // Is this active row?
+        boolean activeRow = false;
+        if((this.getTopRowTiles() == this.getActiveRowTiles()) == topRow) {
+            activeRow = true;
+        }
+        List<Tile> tiles = this.getRowTiles(activeRow);
+        List<Space> spaces = this.getRowSpaces(activeRow);
         List<String> rowStrings = new ArrayList<>();
         for (int i = 0; i < tiles.size(); i++) {
             rowStrings.add(spaces.get(i).toString());
-            rowStrings.add(this.tileString(tiles.get(i)));
+            rowStrings.add(this.tileString(activeRow, i));
         }
         rowStrings.add(spaces.get(spaces.size() - 1).toString());
         return rowStrings;
@@ -319,8 +288,8 @@ public class Board {
 
     @Override
     public String toString() {
-        List<String> boardTop = this.rowToStrings(this.topRowTiles, this.topRowSpaces);
-        List<String> boardBottom = this.rowToStrings(this.bottomRowTiles, this.bottomRowSpaces);
+        List<String> boardTop = this.rowToStrings(true);
+        List<String> boardBottom = this.rowToStrings(false);
         // Determine maximum width of tile or spaces
         int maxLen = Stream.of(boardTop, boardBottom)
                 .flatMap(Collection::stream)

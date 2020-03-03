@@ -68,7 +68,7 @@ public class ISMCTS {
                 PlayerType player = state.getState().playerToMove(state);
                 // Select a random move
                 final Set<String> copyUntried = new HashSet<>(untriedMoves);
-                List<Game> untriedStateList = new ArrayList<>(legalStates).stream()
+                List<Game> untriedStateList = legalStates.stream()
                         .filter(s -> copyUntried.contains(s.getLastMove()))
                         .collect(Collectors.toList());
                 int randomIdx = rand.nextInt(untriedStateList.size());
@@ -105,7 +105,7 @@ public class ISMCTS {
         ISMCTS creature_iscmts = new ISMCTS(10000, false);
         ISMCTS scientist_iscmts = new ISMCTS(10000, false);
         int sciWin = 0;
-        int creWin = 1;
+        int creWin = 0;
         List<Game> endState = new ArrayList<>();
         for(int i= 0; i < 20; i++) {
             Game game = new Game();
