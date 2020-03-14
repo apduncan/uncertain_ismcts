@@ -28,11 +28,11 @@ public class SplitCardTest {
 
     @Test
     public void getPossibleMoves() {
-        Card card = new SplitCard();
-        Set<Board> mvs = card.getPossibleMoves(this.board);
-        for(Board b : mvs) {
-            System.out.println(b.toString());
-            System.out.println("");
-        }
+//        Card card = new SplitCard();
+//        Set<Board> mvs = card.getPossibleMoves(this.board);
+//        for(Board b : mvs) {
+//            System.out.println(b.toString());
+//            System.out.println("");
+//        }
     }
 }

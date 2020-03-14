@@ -28,11 +28,5 @@ public class MoveOneCardTest {
 
     @Test
     public void getPossibleMoves() {
-        Card card = new MoveOneCard();
-        Set<Board> mvs = card.getPossibleMoves(this.board);
-        for(Board b : mvs) {
-            System.out.println(b.toString());
-            System.out.println("");
-        }
     }
 }

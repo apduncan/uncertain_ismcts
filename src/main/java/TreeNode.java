@@ -10,7 +10,7 @@ public class TreeNode {
     /***
      * TODO: Maybe consider a transposition handling scheme?
      */
-    private String move;
+    private Move move;
     private TreeNode parent;
     private List<TreeNode> children;
     private int wins;
@@ -19,7 +19,7 @@ public class TreeNode {
     private double exploration;
     private PlayerType justMoved;
 
-    public TreeNode(String move, TreeNode parent, PlayerType justMoved, double exploration) {
+    public TreeNode(Move move, TreeNode parent, PlayerType justMoved, double exploration) {
         this.move = move;
         this.parent = parent;
         this.children = new ArrayList<>();
@@ -78,27 +78,27 @@ public class TreeNode {
         this.exploration = exploration;
     }
 
-    public String getMove() {
+    public Move getMove() {
         return move;
     }
 
-    public void setMove(String move) {
+    public void setMove(Move move) {
         this.move = move;
     }
 
-    public Set<String> triedMoves() {
+    public Set<Move> triedMoves() {
         return this.children.stream().map(TreeNode::getMove).collect(Collectors.toSet());
     }
 
-    public Set<String> getUntriedMoves(Set<String> legalMoves) {
+    public Set<Move> getUntriedMoves(Set<Move> legalMoves) {
         // Get a list of moves which have not been tried which are among the legal moves
-        Set<String> tried = this.triedMoves();
-        Set<String> untried = new HashSet<>(legalMoves);
+        Set<Move> tried = this.triedMoves();
+        Set<Move> untried = new HashSet<>(legalMoves);
         untried.removeAll(tried);
         return untried;
     }
 
-    public TreeNode selectChild(Set<String> legalMoves) {
+    public TreeNode selectChild(Set<Move> legalMoves) {
         // Select a child node for which the move is legal, based on UCB1 formula
         List<TreeNode> legalChildren = this.children.stream().filter(c -> legalMoves.contains(c.getMove()))
                 .collect(Collectors.toList());
@@ -125,7 +125,7 @@ public class TreeNode {
                 Math.sqrt(Math.log(Double.valueOf(this.getAvails())) / Double.valueOf(this.getVisits())));
     }
 
-    public TreeNode addChild(String move, PlayerType justMoved) {
+    public TreeNode addChild(Move move, PlayerType justMoved) {
         TreeNode child = new TreeNode(move, this, justMoved, this.exploration);
         this.getChildren().add(child);
         return child;

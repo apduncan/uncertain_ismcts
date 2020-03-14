@@ -14,8 +14,7 @@ public class Board {
     private List<Tile> bottomRowTiles;
     private List<Space> topRowSpaces;
     private List<Space> bottomRowSpaces;
-    private List<Tile> activeRowTiles;
-    private List<Space> activeRowSpaces;
+    private boolean bottomActive;
     private int maxWidth;
     public enum Side {LEFT, RIGHT};
 
@@ -46,8 +45,7 @@ public class Board {
         this.bottomRowSpaces = board.bottomRowSpaces.stream()
                 .map(Space::new)
                 .collect(Collectors.toList());
-        this.activeRowSpaces = board.bottomRowSpaces == board.activeRowSpaces ? this.bottomRowSpaces : this.topRowSpaces;
-        this.activeRowTiles = board.bottomRowTiles == board.activeRowTiles ? this.bottomRowTiles : this.topRowTiles;
+        this.bottomActive = board.bottomActive;
     }
 
     private void initBoard(Deck<Tile> deck, List<Cube> leftCubes, List<Cube> rightCubes) {
@@ -60,8 +58,7 @@ public class Board {
         this.bottomRowSpaces = new ArrayList<>(Arrays.asList(new Space(leftCubes), new Space(rightCubes)));
         this.topRowTiles = new ArrayList<>(Arrays.asList(leftTopTile, rightTopTile));
         this.topRowSpaces = IntStream.range(0, 3).mapToObj(i -> new Space()).collect(Collectors.toList());
-        this.activeRowSpaces = bottomRowSpaces;
-        this.activeRowTiles = bottomRowTiles;
+        this.bottomActive = true;
     }
 
     public int getMaxWidth() {
@@ -69,19 +66,19 @@ public class Board {
     }
 
     public List<Tile> getActiveRowTiles() {
-        return this.activeRowTiles;
+        return this.bottomActive ? this.getBottomRowTiles() : this.getTopRowTiles();
     }
 
     public List<Space> getActiveRowSpaces() {
-        return this.activeRowSpaces;
+        return this.bottomActive ? this.getBottomRowSpaces() : this.getTopRowSpaces();
     }
 
     public List<Tile> getInactiveRowTiles() {
-        return this.activeRowTiles == this.bottomRowTiles ? this.topRowTiles : this.bottomRowTiles;
+        return !this.bottomActive ? this.getBottomRowTiles() : this.getTopRowTiles();
     }
 
     public List<Space> getInactiveRowSpaces() {
-        return this.activeRowSpaces == this.bottomRowSpaces ? this.topRowSpaces : this.bottomRowSpaces;
+        return !this.bottomActive ? this.getBottomRowSpaces() : this.getTopRowSpaces();
     }
 
     public List<Tile> getRowTiles(boolean activeRow) {
@@ -161,8 +158,7 @@ public class Board {
     }
 
     private void toggleRows() {
-        this.activeRowTiles = this.getInactiveRowTiles();
-        this.activeRowSpaces = this.getInactiveRowSpaces();
+        this.bottomActive = !this.bottomActive;
     }
 
     public List<Cube> dropEdge(Board.Side side) {
@@ -193,10 +189,10 @@ public class Board {
     }
 
     public void addTiles(Tile left, Tile right) {
-        this.activeRowTiles.add(0, left);
-        this.activeRowTiles.add(right);
-        this.activeRowSpaces.add(0, new Space());
-        this.activeRowSpaces.add(new Space());
+        this.getActiveRowTiles().add(0, left);
+        this.getActiveRowTiles().add(right);
+        this.getActiveRowSpaces().add(0, new Space());
+        this.getActiveRowSpaces().add(new Space());
         this.toggleRows();
     }
 
@@ -271,10 +267,7 @@ public class Board {
 
     private List<String> rowToStrings(boolean topRow) {
         // Is this active row?
-        boolean activeRow = false;
-        if((this.getTopRowTiles() == this.getActiveRowTiles()) == topRow) {
-            activeRow = true;
-        }
+        boolean activeRow = this.bottomActive != topRow;
         List<Tile> tiles = this.getRowTiles(activeRow);
         List<Space> spaces = this.getRowSpaces(activeRow);
         List<String> rowStrings = new ArrayList<>();
@@ -334,7 +327,7 @@ public class Board {
                 .append(this.topRowTiles, board.topRowTiles)
                 .append(this.bottomRowSpaces, board.bottomRowSpaces)
                 .append(this.bottomRowTiles, board.bottomRowTiles)
-                .append(this.activeRowTiles == this.topRowTiles, board.activeRowTiles == board.topRowTiles)
+                .append(this.bottomActive, board.bottomActive)
                 .append(this.maxWidth, board.maxWidth)
                 .isEquals();
     }
@@ -346,7 +339,7 @@ public class Board {
                 .append(this.topRowTiles)
                 .append(this.bottomRowSpaces)
                 .append(this.bottomRowTiles)
-                .append(this.activeRowTiles == this.topRowTiles)
+                .append(this.bottomActive)
                 .append(this.maxWidth)
                 .toHashCode();
     }

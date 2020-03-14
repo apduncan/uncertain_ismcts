@@ -28,11 +28,11 @@ public class MoveAllCardTest {
 
     @Test
     public void getPossibleMoves() {
-        Card card = new MoveAllCard();
-        Set<Board> mvs = card.getPossibleMoves(this.board);
-        for(Board b : mvs) {
-            System.out.println(b.toString());
-            System.out.println("");
-        }
+//        Card card = new MoveAllCard();
+//        Set<Board> mvs = card.getPossibleMoves(this.board);
+//        for(Board b : mvs) {
+//            System.out.println(b.toString());
+//            System.out.println("");
+//        }
     }
 }

@@ -56,23 +56,24 @@ public class Space {
     }
 
     private void sortCubes() {
-        if(sortMap.containsKey(this.cubes)) {
-            this.colors = new HashSet<>(colorMap.get(cubes));
-            this.cubes = new ArrayList<>(sortMap.get(cubes));
-        } else {
+//        if(sortMap.containsKey(this.cubes)) {
+//            this.colors = new HashSet<>(colorMap.get(cubes));
+//            this.cubes = new ArrayList<>(sortMap.get(cubes));
+//        } else {
             List<Cube> sorted = this.cubes.stream().sorted(Cube::compareTo).collect(Collectors.toList());
             Set<Color> colors = this.getCubes().stream()
                     .map(Cube::getColor)
                     .collect(Collectors.toSet());
-            sortMap.put(this.cubes, sorted);
-            colorMap.put(this.cubes, colors);
+//            sortMap.put(this.cubes, sorted);
+//            colorMap.put(this.cubes, colors);
             this.cubes = sorted;
             this.colors = colors;
-        }
+//        }
     }
 
     public void clearCubes() {
         this.cubes = new ArrayList<>();
+        this.colors = new HashSet<>();
     }
 
     public List<Cube> getCubes() {

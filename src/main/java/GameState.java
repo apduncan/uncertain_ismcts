@@ -19,7 +19,7 @@ public enum GameState {
         }
 
         @Override
-        public Set<Game> possibleGames(Game currentGame) {
+        public Set<Move> possibleMoves(Game currentGame) {
             return currentGame.getActivePlayerMoves();
         }
 
@@ -49,7 +49,7 @@ public enum GameState {
         }
 
         @Override
-        public Set<Game> possibleGames(Game currentGame) {
+        public Set<Move> possibleMoves(Game currentGame) {
             return currentGame.getCreatureUpdates();
         }
 
@@ -66,9 +66,9 @@ public enum GameState {
         }
 
         @Override
-        public Set<Game> possibleGames(Game currentGame) {
+        public Set<Move> possibleMoves(Game currentGame) {
             // Terminal state - return only current gamestate
-            return new HashSet<>(Arrays.asList(currentGame));
+            return new HashSet<>(Arrays.asList(new Move(g -> g, "TERMINAL")));
         }
 
         @Override
@@ -83,8 +83,8 @@ public enum GameState {
         }
 
         @Override
-        public Set<Game> possibleGames(Game currentGame) {
-            return new HashSet<>(Arrays.asList(currentGame));
+        public Set<Move> possibleMoves(Game currentGame) {
+            return new HashSet<>(Arrays.asList(new Move(g -> g, "TERMINAL")));
         }
 
         @Override
@@ -110,7 +110,7 @@ public enum GameState {
         }
 
         @Override
-        public Set<Game> possibleGames(Game currentGame) {
+        public Set<Move> possibleMoves(Game currentGame) {
             return currentGame.getScientistDrop();
         }
 
@@ -126,7 +126,7 @@ public enum GameState {
         }
 
         @Override
-        public Set<Game> possibleGames(Game currentGame) {
+        public Set<Move> possibleMoves(Game currentGame) {
             return currentGame.getFreePlace();
         }
 
@@ -142,7 +142,7 @@ public enum GameState {
         }
 
         @Override
-        public Set<Game> possibleGames(Game currentGame) {
+        public Set<Move> possibleMoves(Game currentGame) {
             return currentGame.getDrawTiles();
         }
 
@@ -166,7 +166,7 @@ public enum GameState {
         }
 
         @Override
-        public Set<Game> possibleGames(Game currentGame) {
+        public Set<Move> possibleMoves(Game currentGame) {
             return currentGame.getCreatureToken();
         }
 
@@ -186,7 +186,7 @@ public enum GameState {
         }
 
         @Override
-        public Set<Game> possibleGames(Game currentGame) {
+        public Set<Move> possibleMoves(Game currentGame) {
             return currentGame.getTiebreaker();
         }
 
@@ -197,7 +197,7 @@ public enum GameState {
     };
 
     public abstract GameState nextState(Game prevGame, Game currentGame);
-    public abstract Set<Game> possibleGames(Game currentGame);
+    public abstract Set<Move> possibleMoves(Game currentGame);
     public abstract PlayerType playerToMove(Game game);
 
     public static void main(String[] args) {
@@ -205,11 +205,11 @@ public enum GameState {
         // Play out a game at random
         while(!(game.getState() == GameState.SCIENTIST_WIN || game.getState() == GameState.CREATURE_WIN)) {
             System.out.println(game);
-            List<Game> possible = new ArrayList<>(game.getState().possibleGames(game));
+            List<Move> possible = new ArrayList<>(game.getState().possibleMoves(game));
             Collections.shuffle(possible);
-            game = possible.get(0);
+            game = possible.get(0).makeMove(game);
             game.setState(game.getState().nextState(game, game));
+            System.out.println(game);
         }
-        System.out.println(game);
     }
 }

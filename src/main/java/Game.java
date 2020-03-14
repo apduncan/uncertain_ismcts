@@ -2,6 +2,7 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -215,56 +216,38 @@ public class Game {
         return new Deck<>(topTiles);
     }
 
-    public Set<Game> getActivePlayerMoves() {
+    public Set<Move> getActivePlayerMoves() {
         // Return a set of all possible states the game could move into when the active player takes a move.
-        Set<Game> games = new HashSet<>();
+        Set<Move> moves = new HashSet<>();
         // First possibility is that the active player draws a card.
         if(this.getActivePlayer().getHand().size() < this.getActivePlayer().getHandLimit()) {
-            Game draw = new Game(this);
-            draw.activePlayer.drawCards(1);
-            draw.toggleActivePlayer();
-            draw.setLastMove((this.activePlayer == this.creature ?
-                    PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) + "|DRAW");
-            games.add(draw);
+            Function<Game, Game> draw = g-> {
+                g.activePlayer.drawCards(1);
+                g.toggleActivePlayer();
+                g.setLastMove((this.activePlayer == this.creature ?
+                        PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) + "|DRAW");
+                return g;
+            };
+            moves.add(new Move(draw, "DRAW"));
         }
         // Play each distinct card
         for(Card card : this.getActivePlayer().uniqueCards()) {
             // For each distinct card in this players hand, make all possible future states if that card is played
-            for(Board board : card.getPossibleMoves(this.board)) {
-                Game cardPlay = new Game(this);
-                cardPlay.setBoard(board);
-                cardPlay.activePlayer.getHand().getItems().remove(card);
-                cardPlay.activePlayer.getDeck().getDiscard().add(card);
-                cardPlay.toggleActivePlayer();
-                // Make a string so we can uniquely identify the move just made (card played + board state moved into)
-                String moveDesc = (this.activePlayer == this.creature ? PlayerType.CREATURE.name() :
-                        PlayerType.SCIENTIST.name()) + "|" + card.getClass().getName() + "|" + board.hashCode();
-                cardPlay.setLastMove(moveDesc);
-                games.add(cardPlay);
-            }
+            moves.addAll(card.getPossibleMoves(this, false));
         }
         // Play wildcard
         if(this.getActivePlayer().isWildcardReady()) {
             for (Card card : Game.WILDCARDS) {
                 // For each distinct card in this players hand, make all possible future states if that card is played
-                for (Board board : card.getPossibleMoves(this.board)) {
-                    Game cardPlay = new Game(this);
-                    cardPlay.getActivePlayer().setWildcardReady(false);
-                    cardPlay.setBoard(board);
-                    cardPlay.toggleActivePlayer();
-                    // Make a string so we can uniquely identify the move just made (card played + board state moved into)
-                    String moveDesc = (this.activePlayer == this.creature ? PlayerType.CREATURE.name() :
-                            PlayerType.SCIENTIST.name()) + "|WILDCARD|" + board.hashCode();
-                    games.add(cardPlay);
-                }
+                moves.addAll(card.getPossibleMoves(this, true));
             }
         }
-        return games;
+        return moves;
     }
 
-    public Set<Game> getCreatureUpdates() {
+    public Set<Move> getCreatureUpdates() {
         // Return possible game states when creature updates their position
-        Set<Game> games = new HashSet<>();
+        Set<Move> moves = new HashSet<>();
         // Deal with numbers of cubes first
         // Determine the numbers the creature could say
         Set<Integer> numbers = IntStream.range(0, this.getBoard().getInactiveRowTiles().size())
@@ -272,11 +255,13 @@ public class Game {
                 .boxed()
                 .collect(Collectors.toSet());
         for(Integer num : numbers) {
-            Game copy = new Game(this);
-            // Move to number, modifies in place
-            copy.getBoard().moveToNumber(num);
-            copy.setLastMove("CREATUREUPDATE|" + board.hashCode());
-            games.add(copy);
+            Function<Game, Game> move = g -> {
+                // Move to number, modifies in place
+                g.getBoard().moveToNumber(num);
+                g.setLastMove("CREATUREUPDATE|" + board.hashCode());
+                return g;
+            };
+            moves.add(new Move(move, "CREATUREUPDATE|" + num));
         }
 
         // Deal with colors second
@@ -285,18 +270,22 @@ public class Game {
                 .collect(Collectors.toSet());
         // For each color set the creature could move to, make a new game
         for(Set<Color> c : colors) {
-            Game copy = new Game(this);
-            copy.getBoard().moveToColor(c);
-            copy.setLastMove("CREATUREUPDATE|" + board.hashCode());
-            games.add(copy);
+            Function<Game, Game> move = g -> {
+                g.getBoard().moveToColor(c);
+                g.setLastMove("CREATUREUPDATE|" + board.hashCode());
+                return g;
+            };
+            moves.add(new Move(move, "CREATUREUPDATE|" + c.stream().map(Color::toString)
+                    .collect(Collectors.joining())));
         }
-
+        /*
+        REMOVED AS NOT CHANGING STATE UNTIL MCTS STEPS
         // Select games where the creature does not lose (present in more than one place)
-        Set<Game> nonLoss = games.stream().filter(g -> {
+        Set<Game> nonLoss = moves.stream().filter(g -> {
             return g.getBoard().getInactiveRowTiles().stream().filter(Tile::isCreaturePresent).mapToInt(t -> 1).sum() > 1;
         }).collect(Collectors.toSet());
         // Select games where the creature wins
-        Set<Game> win = games.stream().filter(g -> {
+        Set<Game> win = moves.stream().filter(g -> {
             return g.getBoard().getInactiveRowTiles().get(0).isCreaturePresent() &&
                     g.getBoard().getInactiveRowTiles().get(g.getBoard().getInactiveRowTiles().size()-1).isCreaturePresent() &&
                     g.getBoard().size() == g.getBoard().getMaxWidth();
@@ -310,122 +299,151 @@ public class Game {
             return nonLoss;
         }
         // Otherwise I guess we should just lose :(
-        return games;
+         */
+        return moves;
     }
 
-    public Set<Game> getScientistDrop() {
+    public Set<Move> getScientistDrop() {
         // Get state if scientist drops either edge.
         // If edge shouldn't be dropped, just return current game state
-        Set<Game> games = new HashSet<>();
+        Set<Move> moves = new HashSet<>();
         if(this.getBoard().size() == this.getBoard().getMaxWidth()) {
             // Board is as at max width, so do left and right drops
-            Game dropLeft = new Game(this);
-            if(!dropLeft.getBoard().getInactiveRowTiles().get(0).isCreaturePresent()) {
-                List<Tile> tokenTiles = dropLeft.getBoard().getSideTiles(Board.Side.LEFT).stream()
-                        .filter(Tile::isTokenPresent).collect(Collectors.toList());
-                tokenTiles.forEach(t -> {
-                    t.setTokenPresent(false);
-                    dropLeft.getScientist().addToken();
-                });
-                // If edge has token, add token to scientist
-                dropLeft.droppedCubes = dropLeft.getBoard().dropEdge(Board.Side.LEFT);
-                dropLeft.setLastMove("SCIENTISTDROP|LEFT|" + board.hashCode());
-                games.add(dropLeft);
+            if(!this.getBoard().getInactiveRowTiles().get(0).isCreaturePresent()) {
+                Function<Game, Game> move = g -> {
+                    List<Tile> tokenTiles = g.getBoard().getSideTiles(Board.Side.LEFT).stream()
+                            .filter(Tile::isTokenPresent).collect(Collectors.toList());
+                    tokenTiles.forEach(t -> {
+                        t.setTokenPresent(false);
+                        g.getScientist().addToken();
+                    });
+                    // If edge has token, add token to scientist
+                    g.droppedCubes = g.getBoard().dropEdge(Board.Side.LEFT);
+                    g.setLastMove("SCIENTISTDROP|LEFT|" + board.hashCode());
+                    return g;
+                };
+                moves.add(new Move(move, "DROPLEFT"));
             }
-            Game dropRight = new Game(this);
-            if(!dropRight.getBoard().getInactiveRowTiles().get(dropRight.getBoard().getInactiveRowTiles().size()-1)
+            if(!this.getBoard().getInactiveRowTiles().get(this.getBoard().getInactiveRowTiles().size()-1)
                     .isCreaturePresent()) {
-                List<Tile> tokenTiles = dropRight.getBoard().getSideTiles(Board.Side.RIGHT).stream()
-                        .filter(Tile::isTokenPresent).collect(Collectors.toList());
-                tokenTiles.forEach(t -> {
-                    t.setTokenPresent(false);
-                    dropRight.getScientist().addToken();
-                });
-                dropRight.droppedCubes = dropRight.getBoard().dropEdge(Board.Side.RIGHT);
-                games.add(dropRight);
-                dropRight.setLastMove("SCIENTISTDROP|RIGHT|" + board.hashCode());
+                Function<Game, Game> move = g -> {
+                    List<Tile> tokenTiles = g.getBoard().getSideTiles(Board.Side.RIGHT).stream()
+                            .filter(Tile::isTokenPresent).collect(Collectors.toList());
+                    tokenTiles.forEach(t -> {
+                        t.setTokenPresent(false);
+                        g.getScientist().addToken();
+                    });
+                    g.droppedCubes = g.getBoard().dropEdge(Board.Side.RIGHT);
+                    g.setLastMove("SCIENTISTDROP|RIGHT|" + board.hashCode());
+                    return g;
+                };
+                moves.add(new Move(move, "DROPRIGHT"));
             }
-            if(games.size() == 0) {
+            if(moves.size() == 0) {
                 // If it isn't possible to drop and edge, return current gamestate.
                 // Will lead to creature win during state change
-                Game copy = new Game(this);
-                copy.setLastMove("SCIENTISTDROP|NONE");
-                games.add(copy);
+                Function<Game, Game> move = g-> {
+                    g.setLastMove("SCIENTISTDROP|NONE");
+                    return g;
+                };
+                moves.add(new Move(move, "DROPNONE"));
             }
         } else {
-            games.add(new Game(this));
+            // Not at max width, so will just return game with no drops
+            Function<Game, Game> move = g-> {
+                g.setLastMove("SCIENTISTDROP|NONE");
+                return g;
+            };
+            moves.add(new Move(move, "DROPNONE"));
         }
-        return games;
+        return moves;
     }
 
-    public Set<Game> getFreePlace() {
+    public Set<Move> getFreePlace() {
         // Return all the states in which the dropped cubes could be placed.
         // If no dropped cubes, just return current state
-        Set<Game> games = new HashSet<>();
+        Set<Move> moves = new HashSet<>();
         if(this.getDroppedCubes().size() == 0) {
-            games.add(new Game(this));
-            return games;
+            Function<Game, Game> move = g -> {
+                return g;
+            };
+            moves.add(new Move(move, "FREEPLACE|NONE"));
+            return moves;
         }
         for(Board board : this.placeCubes(new HashSet<>(Arrays.asList(new Board(this.getBoard()))),
                 this.getDroppedCubes().stream().map(Cube::new).collect(Collectors.toList()),
                 this.getBoard())) {
-            Game copy = new Game(this);
-            copy.setBoard(board);
-            copy.setDroppedCubes(new ArrayList<>());
-            copy.setLastMove("CREATURE|FREEPLACE|" + board.hashCode());
-            games.add(copy);
+            Function<Game, Game> move = g -> {
+                g.setBoard(board);
+                g.setDroppedCubes(new ArrayList<>());
+                g.setLastMove("CREATURE|FREEPLACE|" + board.hashCode());
+                return g;
+            };
+            moves.add(new Move(move, "FREEPLACE|" + board.hashCode()));
         }
-        return games;
+        return moves;
     }
 
-    public Set<Game> getDrawTiles() {
+    public Set<Move> getDrawTiles() {
         // Draw the top two tiles, place them either left or right
-        List<Tile> tiles;
-        Set<Game> games = new HashSet<>();
-        Game lr = new Game(this);
-        tiles = lr.getTiles().draw(2);
-        lr.getBoard().addTiles(new Tile(tiles.get(0)), new Tile(tiles.get(1)));
-        lr.setLastMove((lr.getFirstPlayer() == lr.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
-                "|PLACETILES|" + board.hashCode());
-        lr.toggleFirstPlayer();
-        Game rl = new Game(this);
-        tiles = rl.getTiles().draw(2);
-        rl.getBoard().addTiles(new Tile(tiles.get(1)), new Tile(tiles.get(0)));
-        rl.setLastMove((rl.getFirstPlayer() == rl.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
-                "|PLACETILES|" + board.hashCode());
-        rl.toggleFirstPlayer();
-        games.addAll(Arrays.asList(lr, rl));
-        return games;
+        // TODO: Redefine move strings to account for whether a token is on them
+        Set<Move> moves = new HashSet<>();
+        // Place LR
+        Function<Game, Game> move = g -> {
+            List<Tile> tiles = g.getTiles().draw(2);
+            g.getBoard().addTiles(new Tile(tiles.get(0)), new Tile(tiles.get(1)));
+            g.setLastMove((g.getFirstPlayer() == g.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
+                    "|PLACETILES|" + board.hashCode());
+            g.toggleFirstPlayer();
+            return g;
+        };
+        moves.add(new Move(move, "PLACETILES|LR"));
+        Function<Game, Game> moveRl = g -> {
+            List<Tile> tiles = g.getTiles().draw(2);
+            g.getBoard().addTiles(new Tile(tiles.get(1)), new Tile(tiles.get(0)));
+            g.setLastMove((g.getFirstPlayer() == g.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
+                    "|PLACETILES|" + board.hashCode());
+            g.toggleFirstPlayer();
+            return g;
+        };
+        moves.add(new Move(moveRl, "PLACETILES|RL"));
+        return moves;
     }
 
-    public Set<Game> getCreatureToken() {
+    public Set<Move> getCreatureToken() {
         // Creature can take on of the possible tokens.
         List<Integer> tokenIdx = this.getBoard().getCreatureTokens();
-        Set<Game> games = new HashSet<>();
+        Set<Move> moves = new HashSet<>();
         for(Integer idx: tokenIdx) {
-            Game copy = new Game(this);
-            Tile tile = copy.getBoard().getInactiveRowTiles().get(idx);
-            tile.setTokenPresent(false);
-            copy.getCreature().addToken();
-            copy.setLastMove("CREATURE|TAKETOKEN|" + idx.toString());
-            games.add(copy);
+            Function<Game, Game> move = g -> {
+                Tile tile = g.getBoard().getInactiveRowTiles().get(idx);
+                tile.setTokenPresent(false);
+                g.getCreature().addToken();
+                g.setLastMove("CREATURE|TAKETOKEN|" + idx.toString());
+                return g;
+            };
+            moves.add(new Move(move, "TAKETOKEN|" + idx));
         }
-        if(games.size() == 0) {
+        if(moves.size() == 0) {
             // If no token which can be taken, just keep current state
-            games.add(new Game(this));
+            Function<Game, Game> move = g-> g;
+            moves.add(new Move(move, "NONE"));
         }
-        return games;
+        return moves;
     }
 
-    public Set<Game> getTiebreaker() {
+    public Set<Move> getTiebreaker() {
         // Count number of token on bottom row
-        this.getBoard().getBottomRowTiles().stream()
-                .filter(Tile::isTokenPresent)
-                .forEach(t -> this.getCreature().addToken());
-        this.getBoard().getTopRowTiles().stream()
-                .filter(Tile::isTokenPresent)
-                .forEach(t -> this.getScientist().addToken());
-        return new HashSet<>(Arrays.asList(this));
+        Function<Game, Game> move = g -> {
+            g.getBoard().getBottomRowTiles().stream()
+                    .filter(Tile::isTokenPresent)
+                    .forEach(t -> this.getCreature().addToken());
+            g.getBoard().getTopRowTiles().stream()
+                    .filter(Tile::isTokenPresent)
+                    .forEach(t -> this.getScientist().addToken());
+            return g;
+        };
+        return new HashSet<>(Arrays.asList(new Move(move, "TIEBREAKER")));
     }
 
     private Set<Board> placeCubes(Set<Board> finalBoards, List<Cube> cubes, Board board) {

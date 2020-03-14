@@ -1,24 +1,49 @@
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public abstract class Card {
-    protected abstract Set<Board> getPossibleMoves(Board currentBoard);
+    protected abstract Set<Move> getPossibleMoves(Game currentGame, boolean wildcard);
 
     protected abstract Card makeCopy();
 
-    protected Set<Board> getUniqueMoves(Board currentBoard) {
+    protected Set<Move> getUniqueMoves(Game currentGame, boolean wildcard) {
         // Eliminate duplicated moves (different blue cubes being moved but ending up in same configuration)
-        Set<Board> possBoards = this.getPossibleMoves(currentBoard);
-        Set<Board> distinctBoards = new HashSet<>(possBoards.stream()
-                .collect(Collectors.toMap(b -> b.toString(), b -> b))
-                .values());
-        return distinctBoards;
+        Set<Move> possMoves = this.getPossibleMoves(currentGame, wildcard);
+        Set<Move> distinctMoves = possMoves.stream()
+                .collect(Collectors.toSet());
+        return distinctMoves;
+    }
+
+    protected Game playWildcard(Game game) {
+        game.getActivePlayer().setWildcardReady(false);
+        return game;
+    }
+
+    protected Game playHandCard(Game game) {
+        game.getActivePlayer().getHand().getItems().remove(this);
+        game.getActivePlayer().getDeck().getDiscard().add(this);
+        return game;
+    }
+
+    protected String moveString(Game game) {
+        String moveDesc = (game.getActivePlayer() == game.getCreature() ? PlayerType.CREATURE.name() :
+                PlayerType.SCIENTIST.name()) + "|" + this.getClass().getName() + "|" + game.getBoard().hashCode();
+        return moveDesc;
+    }
+
+    protected Game playCard(Game game, boolean wildcard) {
+        if(wildcard) {
+            game = this.playWildcard(game);
+        } else {
+            game = this.playHandCard(game);
+        }
+        game.toggleActivePlayer();
+        // Make a string so we can uniquely identify the move just made (card played + board state moved into)
+        game.setLastMove(this.moveString(game));
+        return game;
     }
 
     @Override

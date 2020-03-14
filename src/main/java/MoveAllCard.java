@@ -2,13 +2,14 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class MoveAllCard extends Card {
     @Override
-    protected Set<Board> getPossibleMoves(Board currentBoard) {
+    protected Set<Move> getPossibleMoves(Game currentGame, boolean wildcard) {
         return Arrays.stream(Color.values())
-                .map(c -> this.moveColor(c, currentBoard))
+                .map(c -> this.moveColor(c, currentGame, wildcard))
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());
     }
@@ -18,26 +19,41 @@ public class MoveAllCard extends Card {
         return new MoveAllCard();
     }
 
-    private Set<Board> moveColor(Color color, Board currentBoard) {
-        Set<Board> moves = new HashSet<>();
+    private Set<Move> moveColor(Color color, Game currentGame, boolean wildcard) {
+        Set<Move> moves = new HashSet<>();
+        // Skip if no cubes of this color on the active row
+        long cubes = currentGame.getBoard().getActiveRowSpaces().stream()
+                .map(Space::getColors)
+                .filter(c -> c.contains(color))
+                .distinct()
+                .count();
+        if(cubes == 0) {
+            return new HashSet<>();
+        }
         // An offset of 0 is equivalent to moving left, offset 1 to moving right
         for(int offset : new int[] {0, 1}) {
-            Board moveBoard = new Board(currentBoard);
-            for(int i = 0; i < moveBoard.getActiveRowSpaces().size(); i++) {
-                Space space = moveBoard.getActiveRowSpaces().get(i);
-                // Remove any color cubes from active space
-                // First find them
-                List<Cube> moveCubes = space.getCubes()
-                        .stream()
-                        .filter(c -> c.getColor() == color)
-                        .collect(Collectors.toList());
-                // Now remove them
-                moveCubes.forEach(c -> space.removeCube(c));
-                // Put them on tile i+offset on the inactive row
-                Space moveTo = moveBoard.getInactiveRowSpaces().get(i+offset);
-                moveTo.addCubes(moveCubes);
-            }
-            moves.add(moveBoard);
+            Function<Game, Game> moveAll = game -> {
+                Board moveBoard = game.getBoard();
+                for (int i = 0; i < moveBoard.getActiveRowSpaces().size(); i++) {
+                    Space space = moveBoard.getActiveRowSpaces().get(i);
+                    // Remove any color cubes from active space
+                    // First find them
+                    List<Cube> moveCubes = space.getCubes()
+                            .stream()
+                            .filter(c -> c.getColor() == color)
+                            .collect(Collectors.toList());
+                    // Now remove them
+                    moveCubes.forEach(space::removeCube);
+                    // Put them on tile i+offset on the inactive row
+                    Space moveTo = moveBoard.getInactiveRowSpaces().get(i + offset);
+                    moveTo.addCubes(moveCubes);
+                }
+                this.playCard(game, wildcard);
+                return game;
+            };
+            Move move = new Move(moveAll, "MOVEALL|" + color + "|" + offset + "|"
+                    + currentGame.getBoard().hashCode());
+            moves.add(move);
         }
         return moves;
     }
