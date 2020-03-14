@@ -222,9 +222,9 @@ public class Game {
         // First possibility is that the active player draws a card.
         if(this.getActivePlayer().getHand().size() < this.getActivePlayer().getHandLimit()) {
             Function<Game, Game> draw = g-> {
-                g.activePlayer.drawCards(1);
+                g.getActivePlayer().drawCards(1);
                 g.toggleActivePlayer();
-                g.setLastMove((this.activePlayer == this.creature ?
+                g.setLastMove((g.getActivePlayer() == g.getCreature() ?
                         PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) + "|DRAW");
                 return g;
             };
@@ -258,7 +258,7 @@ public class Game {
             Function<Game, Game> move = g -> {
                 // Move to number, modifies in place
                 g.getBoard().moveToNumber(num);
-                g.setLastMove("CREATUREUPDATE|" + board.hashCode());
+                g.setLastMove("CREATUREUPDATE|" + g.getBoard().hashCode());
                 return g;
             };
             moves.add(new Move(move, "CREATUREUPDATE|" + num));
@@ -272,7 +272,7 @@ public class Game {
         for(Set<Color> c : colors) {
             Function<Game, Game> move = g -> {
                 g.getBoard().moveToColor(c);
-                g.setLastMove("CREATUREUPDATE|" + board.hashCode());
+                g.setLastMove("CREATUREUPDATE|" + g.getBoard().hashCode());
                 return g;
             };
             moves.add(new Move(move, "CREATUREUPDATE|" + c.stream().map(Color::toString)
@@ -318,8 +318,8 @@ public class Game {
                         g.getScientist().addToken();
                     });
                     // If edge has token, add token to scientist
-                    g.droppedCubes = g.getBoard().dropEdge(Board.Side.LEFT);
-                    g.setLastMove("SCIENTISTDROP|LEFT|" + board.hashCode());
+                    g.setDroppedCubes(g.getBoard().dropEdge(Board.Side.LEFT));
+                    g.setLastMove("SCIENTISTDROP|LEFT|" + g.getBoard().hashCode());
                     return g;
                 };
                 moves.add(new Move(move, "DROPLEFT"));
@@ -333,8 +333,8 @@ public class Game {
                         t.setTokenPresent(false);
                         g.getScientist().addToken();
                     });
-                    g.droppedCubes = g.getBoard().dropEdge(Board.Side.RIGHT);
-                    g.setLastMove("SCIENTISTDROP|RIGHT|" + board.hashCode());
+                    g.setDroppedCubes(g.getBoard().dropEdge(Board.Side.RIGHT));
+                    g.setLastMove("SCIENTISTDROP|RIGHT|" + g.getBoard().hashCode());
                     return g;
                 };
                 moves.add(new Move(move, "DROPRIGHT"));
@@ -372,14 +372,21 @@ public class Game {
         }
         for(Board board : this.placeCubes(new HashSet<>(Arrays.asList(new Board(this.getBoard()))),
                 this.getDroppedCubes().stream().map(Cube::new).collect(Collectors.toList()),
-                this.getBoard())) {
+                new Board(this.getBoard()))) {
+            final Board copy = new Board(board);
+            if(copy.size() > copy.getMaxWidth()) {
+                int foo = 1;
+            }
             Function<Game, Game> move = g -> {
-                g.setBoard(board);
+                if(copy.size() > copy.getMaxWidth()) {
+                    int foo = 1;
+                }
+                g.setBoard(new Board(copy));
                 g.setDroppedCubes(new ArrayList<>());
-                g.setLastMove("CREATURE|FREEPLACE|" + board.hashCode());
+                g.setLastMove("CREATURE|FREEPLACE|" + copy.hashCode());
                 return g;
             };
-            moves.add(new Move(move, "FREEPLACE|" + board.hashCode()));
+            moves.add(new Move(move, "FREEPLACE|" + copy.hashCode()));
         }
         return moves;
     }
@@ -393,7 +400,7 @@ public class Game {
             List<Tile> tiles = g.getTiles().draw(2);
             g.getBoard().addTiles(new Tile(tiles.get(0)), new Tile(tiles.get(1)));
             g.setLastMove((g.getFirstPlayer() == g.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
-                    "|PLACETILES|" + board.hashCode());
+                    "|PLACETILES|" + g.getBoard().hashCode());
             g.toggleFirstPlayer();
             return g;
         };
@@ -402,7 +409,7 @@ public class Game {
             List<Tile> tiles = g.getTiles().draw(2);
             g.getBoard().addTiles(new Tile(tiles.get(1)), new Tile(tiles.get(0)));
             g.setLastMove((g.getFirstPlayer() == g.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
-                    "|PLACETILES|" + board.hashCode());
+                    "|PLACETILES|" + g.getBoard().hashCode());
             g.toggleFirstPlayer();
             return g;
         };
@@ -437,10 +444,10 @@ public class Game {
         Function<Game, Game> move = g -> {
             g.getBoard().getBottomRowTiles().stream()
                     .filter(Tile::isTokenPresent)
-                    .forEach(t -> this.getCreature().addToken());
+                    .forEach(t -> g.getCreature().addToken());
             g.getBoard().getTopRowTiles().stream()
                     .filter(Tile::isTokenPresent)
-                    .forEach(t -> this.getScientist().addToken());
+                    .forEach(t -> g.getScientist().addToken());
             return g;
         };
         return new HashSet<>(Arrays.asList(new Move(move, "TIEBREAKER")));

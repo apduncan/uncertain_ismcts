@@ -41,34 +41,36 @@ public class ISMCTS {
             PlayerType toMove = rootstate.getActivePlayerType();
             Game state = rootstate.cloneAndRandomise(toMove);
 
+            List<Game> stateHistory = new ArrayList<>();
+            List<Move> moveHistory = new ArrayList<>();
+            stateHistory.add(new Game(state));
+            moveHistory.add(null);
+
             // Select
-            Set<Move> legalMoves;
-            Set<Move> untriedMoves;
-            do {
-                legalMoves = this.getMoves(state);
-                untriedMoves = node.getUntriedMoves(legalMoves);
-                if (!(legalMoves.size() != 0 && untriedMoves.size() == 0)) {
-                    break;
-                }
+            Set<Move> legalMoves = this.getMoves(state);
+            Set<Move> untriedMoves = node.getUntriedMoves(this.getMoves(state));
+            while(legalMoves.size() != 0 && untriedMoves.size() == 0) {
                 node = node.selectChild(legalMoves);
-                final Move selectedMove = node.getMove();
-                state = selectedMove.makeMove(state);
-            } while (true);
+                Move nodeMove = node.getMove();
+                state = nodeMove.makeMove(state);
+//                moveHistory.add(nodeMove);
+//                stateHistory.add(new Game(state));
+                legalMoves = this.getMoves(state);
+                untriedMoves = node.getUntriedMoves(this.getMoves(state));
+            }
 
             // Expand
             if (untriedMoves.size() != 0) {
                 // Determine player to move
                 PlayerType player = state.getState().playerToMove(state);
                 // Select a random move
-                final Set<Move> copyUntried = new HashSet<>(untriedMoves);
-                List<Move> untriedMovesList = legalMoves.stream()
-                        .filter(s -> copyUntried.contains(s))
-                        .collect(Collectors.toList());
-                int randomIdx = rand.nextInt(untriedMovesList.size());
-                Move selectedMove = untriedMovesList.get(randomIdx);
+                int randomIdx = rand.nextInt(untriedMoves.size());
+                Move selectedMove = new ArrayList<>(untriedMoves).get(randomIdx);
                 state = selectedMove.makeMove(state);
+//                moveHistory.add(selectedMove);
+//                stateHistory.add(new Game(state));
                 node = node.addChild(selectedMove, player);
-            }
+                }
 
             // Simulate
             // Play randomly until a terminal state is reached
@@ -77,6 +79,8 @@ public class ISMCTS {
                 int randomIdx = rand.nextInt(legalMoveList.size());
                 Move selectedMove = legalMoveList.get(randomIdx);
                 state = selectedMove.makeMove(state);
+//                stateHistory.add(new Game(state));
+//                moveHistory.add(selectedMove);
             }
 
             // Backpropagate
@@ -95,11 +99,11 @@ public class ISMCTS {
 
     public static void main(String[] args) {
         ISMCTS creature_iscmts = new ISMCTS(10000, false);
-        ISMCTS scientist_iscmts = new ISMCTS(10000, false);
+        ISMCTS scientist_iscmts = new ISMCTS(2000, false);
         int sciWin = 0;
         int creWin = 0;
         List<Game> endState = new ArrayList<>();
-        for(int i= 0; i < 20; i++) {
+        for(int i= 0; i < 10; i++) {
             Game game = new Game();
             while (!(game.getState() == GameState.SCIENTIST_WIN || game.getState() == GameState.CREATURE_WIN)) {
                 System.out.println(game);

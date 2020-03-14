@@ -11,8 +11,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static javafx.scene.input.KeyCode.T;
-
 public class Player {
     // Represents things one of the player has
     private int handLimit;
