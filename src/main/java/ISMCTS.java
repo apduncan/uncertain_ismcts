@@ -21,11 +21,6 @@ public class ISMCTS {
         return game.getState().possibleMoves(game);
     }
 
-//    private Set<String> getMoves(Game game) {
-//         return game.getState().possibleMoves(game).stream()
-//                .map(Game::getLastMove).collect(Collectors.toSet());
-//    }
-
     public Move selectMove(Game rootstate) {
         TreeNode root = new TreeNode(null, null, null, this.getExploration());
         Random rand = new Random();
@@ -53,8 +48,6 @@ public class ISMCTS {
                 node = node.selectChild(legalMoves);
                 Move nodeMove = node.getMove();
                 state = nodeMove.makeMove(state);
-//                moveHistory.add(nodeMove);
-//                stateHistory.add(new Game(state));
                 legalMoves = this.getMoves(state);
                 untriedMoves = node.getUntriedMoves(this.getMoves(state));
             }
@@ -67,8 +60,6 @@ public class ISMCTS {
                 int randomIdx = rand.nextInt(untriedMoves.size());
                 Move selectedMove = new ArrayList<>(untriedMoves).get(randomIdx);
                 state = selectedMove.makeMove(state);
-//                moveHistory.add(selectedMove);
-//                stateHistory.add(new Game(state));
                 node = node.addChild(selectedMove, player);
                 }
 
@@ -79,8 +70,6 @@ public class ISMCTS {
                 int randomIdx = rand.nextInt(legalMoveList.size());
                 Move selectedMove = legalMoveList.get(randomIdx);
                 state = selectedMove.makeMove(state);
-//                stateHistory.add(new Game(state));
-//                moveHistory.add(selectedMove);
             }
 
             // Backpropagate
@@ -93,7 +82,7 @@ public class ISMCTS {
             }
         }
         Move bestMove = root.getChildren().stream()
-                .max((a, b) -> Integer.compare(a.getVisits(), b.getVisits())).get().getMove();
+                .max(Comparator.comparingInt(TreeNode::getVisits)).get().getMove();
         return bestMove;
     }
 
