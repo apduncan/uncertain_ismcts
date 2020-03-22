@@ -88,7 +88,6 @@ public class Player {
 
     public void addToken() {
         this.tokens++;
-        this.setWildcardReady(true);
     }
 
     public boolean isWildcardReady() {

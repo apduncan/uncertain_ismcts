@@ -47,7 +47,7 @@ public class ThreadedSampler {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        ThreadedSampler ts = new ThreadedSampler(10000, 10000, 0.7, 3, 10);
+        ThreadedSampler ts = new ThreadedSampler(10000, 10000, 0.7, 3, 250);
         List<CallableGame> games = ts.runSample();
         long sciWins = games.stream()
                 .filter(g -> g.getWinner() == PlayerType.SCIENTIST)

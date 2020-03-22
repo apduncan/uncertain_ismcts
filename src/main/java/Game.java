@@ -316,8 +316,9 @@ public class Game {
                     tokenTiles.forEach(t -> {
                         t.setTokenPresent(false);
                         g.getScientist().addToken();
+                        g.getCreature().setWildcardReady(true);
                     });
-                    // If edge has token, add token to scientist
+                    // If edge has token, add token to scientist, and activate creature wildcard
                     g.setDroppedCubes(g.getBoard().dropEdge(Board.Side.LEFT));
                     g.setLastMove("SCIENTISTDROP|LEFT|" + g.getBoard().hashCode());
                     return g;
@@ -426,6 +427,7 @@ public class Game {
                 Tile tile = g.getBoard().getInactiveRowTiles().get(idx);
                 tile.setTokenPresent(false);
                 g.getCreature().addToken();
+                g.getScientist().setWildcardReady(true);
                 g.setLastMove("CREATURE|TAKETOKEN|" + idx.toString());
                 return g;
             };
