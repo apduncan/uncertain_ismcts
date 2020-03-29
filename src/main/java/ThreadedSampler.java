@@ -15,7 +15,6 @@ public class ThreadedSampler {
     public ThreadedSampler(int scientistIter, int creatureIter, double exploration, int threadMax, int noGames) {
         this.scientistIter = scientistIter;
         this.creatureIter = creatureIter;
-        this.scientistIter = scientistIter;
         this.exploration = exploration;
         this.threadMax = threadMax;
         this.noGames = noGames;
@@ -47,7 +46,7 @@ public class ThreadedSampler {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        ThreadedSampler ts = new ThreadedSampler(10000, 10000, 0.7, 3, 250);
+        ThreadedSampler ts = new ThreadedSampler(10000, 10000, 0.7, 4, 100);
         List<CallableGame> games = ts.runSample();
         long sciWins = games.stream()
                 .filter(g -> g.getWinner() == PlayerType.SCIENTIST)

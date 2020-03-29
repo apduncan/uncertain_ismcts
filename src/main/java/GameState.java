@@ -103,6 +103,11 @@ public enum GameState {
                 return this.CREATURE_WIN;
             }
 
+            // If there aren't enough tiles to draw, move to tiebreaker condition
+            if(currentGame.getTiles().size() < 2) {
+                return this.TIEBREAKER;
+            }
+
             if(currentGame.getDroppedCubes().size() > 0) {
                 return this.FREE_PLACE;
             }
@@ -154,10 +159,10 @@ public enum GameState {
     CREATURE_TOKENS {
         @Override
         public GameState nextState(Game prevGame, Game currentGame) {
-            // If there aren't enough tiles to draw, move to tiebreaker condition
-            if(currentGame.getTiles().size() < 2) {
-                return this.TIEBREAKER;
-            }
+//            // If there aren't enough tiles to draw, move to tiebreaker condition
+//            if(currentGame.getTiles().size() < 2) {
+//                return this.TIEBREAKER;
+//            }
             // Move on to scientist drop, or draw tiles
             if(currentGame.getBoard().size() == currentGame.getBoard().getMaxWidth()) {
                 return this.SCIENTIST_DROP;
