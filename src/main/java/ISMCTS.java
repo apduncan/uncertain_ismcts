@@ -87,8 +87,8 @@ public class ISMCTS {
     }
 
     public static void main(String[] args) {
-        ISMCTS creature_iscmts = new ISMCTS(10000, false);
-        ISMCTS scientist_iscmts = new ISMCTS(2000, false);
+        ISMCTS creature_iscmts = new ISMCTS(20000, false);
+        ISMCTS scientist_iscmts = new ISMCTS(20000, false);
         int sciWin = 0;
         int creWin = 0;
         List<Game> endState = new ArrayList<>();

@@ -108,6 +108,7 @@ public enum GameState {
                 return this.TIEBREAKER;
             }
 
+            // Comment out if trying placing as a card driven action
             if(currentGame.getDroppedCubes().size() > 0) {
                 return this.FREE_PLACE;
             }

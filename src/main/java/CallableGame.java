@@ -42,6 +42,9 @@ public class CallableGame implements Callable<CallableGame> {
         // Set the winning player
         this.winner = this.gameState.getState() == GameState.SCIENTIST_WIN ? PlayerType.SCIENTIST : PlayerType.CREATURE;
         System.out.println("END: " + this.winner.name());
+        System.out.println("### TURN END-1 ###");
+        System.out.println(this.getGameStateHistory().get(this.getGameStateHistory().size()-2));
+        System.out.println("### TURN END ###");
         System.out.println(this.gameState);
         return this;
     }

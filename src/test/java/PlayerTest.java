@@ -7,7 +7,7 @@ public class PlayerTest {
     private Player player;
     @Before
     public void setUp() throws Exception {
-        this.player = new Player(3, 3, 3, 4, false, 0, 3);
+        this.player = new Player(3, 3, 3, 0, 4, false, 0, 3);
     }
 
     @Test

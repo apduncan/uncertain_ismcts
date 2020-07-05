@@ -10,13 +10,14 @@ public class Game {
     // CONSTANTS
     public static final int DEFAULT_DECK_SIZE = 17;
     public static final int DEFAULT_TOKEN_TILES = 5;
+    public static final int DEFAULT_MAX_HEURISTIC_PLACECUBES = 1000;
     public static final PlayerType DEFAULT_SCIENTIST = PlayerType.SCIENTIST;
     public static final PlayerType DEFAULT_CREATURE = PlayerType.CREATURE;
     public static final List<Color> DEFAULT_LEFTCUBES = new ArrayList<>(Arrays.asList(Color.BLUE, Color.BLUE,
             Color.ORANGE, Color.ORANGE, Color.GREEN));
     public static final List<Color> DEFUALT_RIGHTCUBES = new ArrayList<>(Arrays.asList(Color.BLUE, Color.BLUE,
             Color.ORANGE, Color.GREEN, Color.GREEN));
-    public static final List<Card> WILDCARDS = new ArrayList<>(Arrays.asList(new MoveOneCard(), new MoveAllCard(),
+    public static final List<Card> WILDCARDS = new ArrayList<Card>(Arrays.asList(new MoveOneCard(), new MoveAllCard(),
             new SplitCard()));
 
     // PROPERTIES
@@ -29,6 +30,7 @@ public class Game {
     private List<Cube> droppedCubes;
     private Player firstPlayer;
     private String lastMove;
+    private int turn;
 
     public Game(PlayerType scientist, PlayerType creature, int boardWidth, int deckSize, int tokenTiles,
                 List<Color> leftCubes, List<Color> rightCubes) {
@@ -42,7 +44,9 @@ public class Game {
         this.state = GameState.MOVE_CUBES;
         this.droppedCubes = new ArrayList<>();
         this.firstPlayer = this.creature;
+        this.activePlayer = this.creature;
         this.lastMove = "";
+        this.turn = 1;
     }
 
     public Game() {
@@ -57,6 +61,7 @@ public class Game {
         this.state = GameState.MOVE_CUBES;
         this.droppedCubes = new ArrayList<>();
         this.firstPlayer = this.creature;
+        this.turn = 1;
         this.lastMove = "";
     }
 
@@ -70,6 +75,7 @@ public class Game {
         this.droppedCubes = game.droppedCubes.stream().map(Cube::new).collect(Collectors.toList());
         this.firstPlayer = game.getFirstPlayer() == game.getCreature() ? this.getCreature() : this.getScientist();
         this.lastMove = game.getLastMove();
+        this.turn = game.getTurn();
     }
 
     public List<Cube> getDroppedCubes() {
@@ -78,6 +84,10 @@ public class Game {
 
     public void setDroppedCubes(List<Cube> droppedCubes) {
         this.droppedCubes = droppedCubes;
+    }
+
+    public void addDroppedCubes(List<Cube> droppedCubes) {
+        this.droppedCubes.addAll(droppedCubes);
     }
 
     public Player getFirstPlayer() {
@@ -168,6 +178,18 @@ public class Game {
         return this.firstPlayer;
     }
 
+    public int getTurn() {
+        return this.turn;
+    }
+
+    public void setTurn(int turn) {
+        this.turn = turn;
+    }
+
+    public void incrementTurn() {
+        this.turn++;
+    }
+
     public Game cloneAndRandomise(PlayerType player) {
         // Randomise players
         Game clone = new Game(this);
@@ -222,10 +244,16 @@ public class Game {
         // First possibility is that the active player draws a card.
         if(this.getActivePlayer().getHand().size() < this.getActivePlayer().getHandLimit()) {
             Function<Game, Game> draw = g-> {
-                g.getActivePlayer().drawCards(1);
-                g.toggleActivePlayer();
+                // If the creature has two or fewer beads out, let them draw two.
+                int n = 1;
+                if(g.getActivePlayer() == g.getCreature()
+                        && g.getBoard().getActiveRowTiles().stream().filter(t -> t.isCreaturePresent()).count() < 3) {
+                    n = 1;
+                }
+                g.getActivePlayer().drawCards(n);
                 g.setLastMove((g.getActivePlayer() == g.getCreature() ?
                         PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) + "|DRAW");
+                g.toggleActivePlayer();
                 return g;
             };
             moves.add(new Move(draw, "DRAW"));
@@ -237,7 +265,10 @@ public class Game {
         }
         // Play wildcard
         if(this.getActivePlayer().isWildcardReady()) {
-            for (Card card : Game.WILDCARDS) {
+            // Remove any cards which could be played from hand instead
+            List<Card> wilds = new ArrayList<>(Game.WILDCARDS);
+            wilds.removeAll(this.getActivePlayer().getHand().getItems());
+            for (Card card : wilds) {
                 // For each distinct card in this players hand, make all possible future states if that card is played
                 moves.addAll(card.getPossibleMoves(this, true));
             }
@@ -278,6 +309,27 @@ public class Game {
             moves.add(new Move(move, "CREATUREUPDATE|" + c.stream().map(Color::toString)
                     .collect(Collectors.joining())));
         }
+
+        // Collect any moves which lead to a losing state
+        Set<Move> losingMoves = moves.stream()
+                .filter(m -> {
+                   // Determine if this move leads to a game with creature on 1 or fewer tiles
+                   Game copy = new Game(this);
+                   copy = m.makeMove(copy);
+                   long countPresence = copy.getBoard().getInactiveRowTiles().stream()
+                           .filter(Tile::isCreaturePresent)
+                           .count();
+                   return countPresence < 2;
+
+                })
+                .collect(Collectors.toSet());
+
+        // If all states are losing, return them. Otherwise, return all non-losing moves.
+        if(losingMoves.size() == moves.size()) {
+            return losingMoves;
+        }
+        moves.removeAll(losingMoves);
+        return moves;
         /*
         REMOVED AS NOT CHANGING STATE UNTIL MCTS STEPS
         // Select games where the creature does not lose (present in more than one place)
@@ -300,7 +352,6 @@ public class Game {
         }
         // Otherwise I guess we should just lose :(
          */
-        return moves;
     }
 
     public Set<Move> getScientistDrop() {
@@ -319,7 +370,7 @@ public class Game {
                         g.getCreature().setWildcardReady(true);
                     });
                     // If edge has token, add token to scientist, and activate creature wildcard
-                    g.setDroppedCubes(g.getBoard().dropEdge(Board.Side.LEFT));
+                    g.addDroppedCubes(g.getBoard().dropEdge(Board.Side.LEFT));
                     g.setLastMove("SCIENTISTDROP|LEFT|" + g.getBoard().hashCode());
                     return g;
                 };
@@ -334,7 +385,7 @@ public class Game {
                         t.setTokenPresent(false);
                         g.getScientist().addToken();
                     });
-                    g.setDroppedCubes(g.getBoard().dropEdge(Board.Side.RIGHT));
+                    g.addDroppedCubes(g.getBoard().dropEdge(Board.Side.RIGHT));
                     g.setLastMove("SCIENTISTDROP|RIGHT|" + g.getBoard().hashCode());
                     return g;
                 };
@@ -403,6 +454,7 @@ public class Game {
             g.setLastMove((g.getFirstPlayer() == g.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
                     "|PLACETILES|" + g.getBoard().hashCode());
             g.toggleFirstPlayer();
+            g.incrementTurn();
             return g;
         };
         moves.add(new Move(move, "PLACETILES|LR"));
@@ -412,6 +464,7 @@ public class Game {
             g.setLastMove((g.getFirstPlayer() == g.getCreature() ? PlayerType.CREATURE.name() : PlayerType.SCIENTIST.name()) +
                     "|PLACETILES|" + g.getBoard().hashCode());
             g.toggleFirstPlayer();
+            g.incrementTurn();
             return g;
         };
         moves.add(new Move(moveRl, "PLACETILES|RL"));
@@ -455,7 +508,7 @@ public class Game {
         return new HashSet<>(Arrays.asList(new Move(move, "TIEBREAKER")));
     }
 
-    private Set<Board> placeCubes(Set<Board> finalBoards, List<Cube> cubes, Board board) {
+    protected Set<Board> placeCubes(Set<Board> finalBoards, List<Cube> cubes, Board board) {
         // Get the topmost cube
         Cube cube = cubes.get(cubes.size() - 1);
         cubes.remove(cubes.size() - 1);
@@ -470,6 +523,26 @@ public class Game {
                 // Recursively placed remaining cubes. Use a copy of cube list.
                 placeCubes(finalBoards, cubes.stream().map(Cube::new).collect(Collectors.toList()), copy);
             }
+        }
+        return finalBoards;
+    }
+
+    protected Set<Board> heuristicPlaceCubes(Set<Board> finalBoards, List<Cube> cubes, Board board) {
+        // Use this method when there are too many cubes to exhaustively search.
+        finalBoards = new HashSet<>();
+        while(finalBoards.size() < this.DEFAULT_MAX_HEURISTIC_PLACECUBES) {
+            // Keep randomly doing cube distributions until we hit the max
+            Random rand = new Random();
+            Board copy = new Board(board);
+            List<Cube> toPlace = new ArrayList<>(this.getDroppedCubes());
+            Collections.shuffle(toPlace);
+            while(toPlace.size() > 0) {
+                // Select a random space to place some cubes on
+                Space space = copy.getSpace(false, rand.nextInt(copy.getInactiveRowSpaces().size()));
+                space.addCube(toPlace.get(0));
+                toPlace.remove(0);
+            }
+            finalBoards.add(copy);
         }
         return finalBoards;
     }
@@ -507,12 +580,15 @@ public class Game {
     @Override
     public String toString() {
         return "===Game=== \n" +
-                "+scientist\n" + scientist +
+                "+turn " + turn +
+                "\n+scientist\n" + scientist +
                 "\n+creature\n" + creature +
                 "\n+board\n" + board +
                 "\n+tiles\n" + tiles +
                 "\n+activePlayer\n" + (this.activePlayer == this.scientist ? "SCIENTIST" : "CREATURE") +
-                "\n+state=" + state;
+                "\n+droppedCubes\n" + this.droppedCubes +
+                "\n+state=" + state +
+                "\n+lastMove=" + this.getLastMove();
     }
 
 }

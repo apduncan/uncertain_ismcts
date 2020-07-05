@@ -20,7 +20,7 @@ public class Player {
     private int tokens;
     private boolean wildcardReady;
 
-    public Player(int cardMoveOne, int cardMoveAll, int cardSplit, int handLimit, boolean wildcardReady, int tokens,
+    public Player(int cardMoveOne, int cardMoveAll, int cardSplit, int cardPlace, int handLimit, boolean wildcardReady, int tokens,
                   int startingHandsize) {
         this.handLimit = handLimit;
         this.tokens = tokens;
@@ -30,6 +30,7 @@ public class Player {
         this.deck.addToDeck(IntStream.range(0, cardMoveAll).mapToObj(i -> new MoveAllCard()).collect(Collectors.toList()));
         this.deck.addToDeck(IntStream.range(0, cardMoveOne).mapToObj(i -> new MoveOneCard()).collect(Collectors.toList()));
         this.deck.addToDeck(IntStream.range(0, cardSplit).mapToObj(i -> new SplitCard()).collect(Collectors.toList()));
+        this.deck.addToDeck(IntStream.range(0, cardPlace).mapToObj(i -> new PlaceCubesCard()).collect(Collectors.toList()));
         // A new player should shuffle their deck - don't do this with a copy constructor
         this.deck.shuffleDeck();
         this.hand = new Deck<>();
@@ -50,7 +51,7 @@ public class Player {
     }
 
     public Player(PlayerType type) {
-        this(type.getMoveOne(), type.getMoveAll(), type.getSplit(), type.getHandLimit(), type.isWildcardReady(),
+        this(type.getMoveOne(), type.getMoveAll(), type.getSplit(), type.getPlace(), type.getHandLimit(), type.isWildcardReady(),
                 0, type.getStartingHand());
     }
 

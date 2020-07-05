@@ -40,9 +40,9 @@ public abstract class Card {
         } else {
             game = this.playHandCard(game);
         }
-        game.toggleActivePlayer();
         // Make a string so we can uniquely identify the move just made (card played + board state moved into)
         game.setLastMove(this.moveString(game));
+        game.toggleActivePlayer();
         return game;
     }
 
