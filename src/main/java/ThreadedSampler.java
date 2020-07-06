@@ -53,6 +53,17 @@ public class ThreadedSampler {
                 .count();
         long creatureWins = games.size() - sciWins;
         System.out.println("Scientist: " + sciWins + ", Creature: " + creatureWins);
+        // Do again for Tiebreaker wins
+        List<CallableGame> tiebreakers = games.stream()
+                .filter(CallableGame::isTiebreaker)
+                .collect(Collectors.toList());
+        System.out.println("Tiebreakers: " + tiebreakers.size());
+        long sciBreakers = tiebreakers.stream()
+                .filter(g -> g.getWinner() == PlayerType.SCIENTIST)
+                .count();
+        long creBreakers = tiebreakers.size() - sciBreakers;
+        System.out.println("Scientist Tiebreak Wins: " + sciBreakers);
+        System.out.println("Creature Tiebreak Wins: " + creBreakers);
         ts.executor.shutdown();
     }
 }

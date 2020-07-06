@@ -248,6 +248,10 @@ public class Game {
                 int n = 1;
                 if(g.getActivePlayer() == g.getCreature()
                         && g.getBoard().getActiveRowTiles().stream().filter(t -> t.isCreaturePresent()).count() < 3) {
+                    n = 2;
+                }
+                if(g.getActivePlayer() == g.getScientist()
+                        && g.getBoard().getActiveRowTiles().stream().filter(t -> t.isCreaturePresent()).count() > 2) {
                     n = 1;
                 }
                 g.getActivePlayer().drawCards(n);

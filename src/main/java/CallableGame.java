@@ -105,4 +105,8 @@ public class CallableGame implements Callable<CallableGame> {
     public void setGameMoveHistory(List<Move> gameMoveHistory) {
         this.gameMoveHistory = gameMoveHistory;
     }
+
+    public boolean isTiebreaker() {
+        return this.getGameStateHistory().get(this.getGameStateHistory().size()-2).getState() == GameState.TIEBREAKER;
+    }
 }
